@@ -6,36 +6,6 @@ let CURRENT_USER = null
 let CURRENT_PROFILE = null
  
 // ============================
-// AUTH GUARD UNTUK URL LANGSUNG
-// ============================
-// Halaman yang memerlukan login
-const PROTECTED_PAGES = ['profil', 'pengaturan', 'disimpan']
-
-// Ambil nama file dari URL
-const currentPage = window.location.pathname.split('/').pop().replace('.html', '') || 'index'
-
-// Cek apakah halaman saat ini butuh login
-if (PROTECTED_PAGES.includes(currentPage)) {
-  (async function() {
-    // Tunggu window._SB siap
-    let wait = 0
-    while (!window._SB && wait < 50) {
-      await new Promise(r => setTimeout(r, 100))
-      wait++
-    }
-    
-    if (window._SB) {
-      const user = await window._SB.getCurrentUser()
-      if (!user) {
-        // Redirect ke auth.html
-        window.location.href = 'auth.html'
-      }
-    }
-  })()
-}
-
-
-// ============================
 // GLOBAL CONSTANTS
 // ============================
 const fileIcons = {image:'fas fa-image',video:'fas fa-file-video',pdf:'fas fa-file-pdf',doc:'fas fa-file-word',docx:'fas fa-file-word'};
@@ -747,59 +717,40 @@ function renderAnalyst() {
 }
  
 function renderProfil() {
-  if (!CURRENT_USER) { 
-    openAuthModal(); 
-    return; 
-  }
-  
-  // Jika CURRENT_PROFILE belum ada, tunggu atau ambil ulang
-  if (!CURRENT_PROFILE) {
-    setTimeout(renderProfil, 500);
-    return;
-  }
-  
-  // Gunakan CURRENT_PROFILE langsung dari Supabase
-  const profile = CURRENT_PROFILE;
-  const contents = DB.getArr('contents').filter(c => c.userId === CURRENT_USER.id);
-  const discussions = DB.getArr('discussions').filter(d => d.userId === CURRENT_USER.id);
+  if (!CURRENT_USER) { openAuthModal(); return }
+  const profile = DB.get('user_profile') || {};
+  const contents = DB.getArr('contents');
+  const discussions = DB.getArr('discussions');
  
-  // Update UI dengan data dari Supabase
-  document.getElementById('profil-name').textContent = profile.full_name || profile.username || 'Pengguna';
-  document.getElementById('profil-username').textContent = '@' + (profile.username || 'user');
-  document.getElementById('profil-bio').textContent = profile.bio || 'Tidak ada bio';
-  document.getElementById('info-location').textContent = profile.location || 'Tidak disebutkan';
-  document.getElementById('info-occupation').textContent = profile.occupation || 'Tidak disebutkan';
-  document.getElementById('info-techstack').textContent = profile.tech_stack || 'Tidak disebutkan';
-  document.getElementById('info-interests').textContent = profile.interests || 'Tidak disebutkan';
+  document.getElementById('profil-name').textContent = profile.name || 'San Pelong';
+  document.getElementById('profil-username').textContent = '@'+(profile.username||'sanpelong');
+  document.getElementById('profil-bio').textContent = profile.bio || '';
+  document.getElementById('info-location').textContent = profile.location || '';
+  document.getElementById('info-occupation').textContent = profile.occupation || '';
+  document.getElementById('info-techstack').textContent = profile.techStack || '';
+  document.getElementById('info-interests').textContent = profile.interests || '';
  
-  // Avatar
-  if (profile.avatar_url) {
-    document.getElementById('avatar-img').src = profile.avatar_url;
+  if (profile.avatarUrl) {
+    document.getElementById('avatar-img').src = profile.avatarUrl;
     document.getElementById('avatar-img').classList.remove('hidden');
     document.getElementById('avatar-initial').classList.add('hidden');
   } else {
-    const initial = (profile.full_name || profile.username || 'U')[0].toUpperCase();
-    document.getElementById('avatar-initial').textContent = initial;
+    document.getElementById('avatar-initial').textContent = (profile.name||'S')[0].toUpperCase();
     document.getElementById('avatar-img').classList.add('hidden');
     document.getElementById('avatar-initial').classList.remove('hidden');
   }
-  
-  // Cover
-  if (profile.cover_url) {
+  if (profile.coverUrl) {
     const coverImg = document.getElementById('cover-img');
-    coverImg.src = profile.cover_url;
+    coverImg.src = profile.coverUrl;
     coverImg.classList.remove('hidden');
-  } else {
-    document.getElementById('cover-img').classList.add('hidden');
   }
  
-  // Stats
-  document.getElementById('stat-followers').textContent = profile.followers_count || 0;
-  document.getElementById('stat-following').textContent = profile.following_count || 0;
+  document.getElementById('stat-followers').textContent = profile.followers || 0;
+  document.getElementById('stat-following').textContent = profile.following || 0;
   document.getElementById('stat-posts').textContent = contents.length;
-  document.getElementById('stat-likes-total').textContent = contents.reduce((a,c)=>a+(c.likes||0), 0);
-  document.getElementById('stat-comments').textContent = discussions.reduce((a,d)=>a+(d.comments||0), 0);
-  document.getElementById('stat-shares').textContent = discussions.reduce((a,d)=>a+(d.shares||0), 0);
+  document.getElementById('stat-likes-total').textContent = contents.reduce((a,c)=>a+c.likes,0);
+  document.getElementById('stat-comments').textContent = discussions.reduce((a,d)=>a+d.comments,0);
+  document.getElementById('stat-shares').textContent = discussions.reduce((a,d)=>a+d.shares,0);
  
   renderRecentUploads();
   renderProfilKonten();
@@ -1884,250 +1835,5 @@ function _ensureSBMethods() {
     };
   }
 }
-// ============================
-// PROFIL REFRESH FROM SUPABASE (NO LOCALSTORAGE)
-// ============================
-
-// Fungsi untuk refresh data profil langsung dari Supabase
-async function refreshProfileFromSupabase() {
-  if (!CURRENT_USER) return null;
-  
-  try {
-    // Ambil data terbaru dari Supabase
-    const freshProfile = await window._SB.getProfile(CURRENT_USER.id);
-    if (freshProfile) {
-      CURRENT_PROFILE = freshProfile;
-      
-      // Update UI jika halaman profil sedang aktif
-      const activePage = getCurrentPage();
-      if (activePage === 'profil') {
-        renderProfil();
-      }
-      
-      // Update sidebar user info
-      updateSidebarUser();
-      
-      return freshProfile;
-    }
-  } catch(e) {
-    console.error('Refresh profile error:', e);
-  }
-  return CURRENT_PROFILE;
-}
-
-// Override saveEditProfil agar refresh otomatis
-const originalSaveEditProfil = saveEditProfil;
-saveEditProfil = async function() {
-  const updates = {
-    full_name: document.getElementById('ep-name')?.value.trim(),
-    username: document.getElementById('ep-username')?.value.trim(),
-    bio: document.getElementById('ep-bio')?.value.trim(),
-    location: document.getElementById('ep-location')?.value.trim(),
-    occupation: document.getElementById('ep-occupation')?.value.trim(),
-    tech_stack: document.getElementById('ep-techstack')?.value.trim(),
-    interests: document.getElementById('ep-interests')?.value.trim(),
-  };
-  
-  // Hapus field yang kosong
-  Object.keys(updates).forEach(key => {
-    if (updates[key] === undefined || updates[key] === '') {
-      delete updates[key];
-    }
-  });
-  
-  if (Object.keys(updates).length === 0) {
-    toast('⚠️ Tidak ada perubahan');
-    closeModal('modal-editprofil');
-    return;
-  }
-  
-  try {
-    // Update ke Supabase
-    const updatedProfile = await window._SB.updateProfile(CURRENT_USER.id, updates);
-    CURRENT_PROFILE = updatedProfile;
-    
-    // Update UI
-    if (getCurrentPage() === 'profil') {
-      renderProfil();
-    }
-    updateSidebarUser();
-    
-    toast('✅ Profil berhasil diperbarui!');
-    closeModal('modal-editprofil');
-  } catch(e) {
-    toast('❌ Gagal update profil: ' + e.message, true);
-  }
-};
-
-// Override uploadAvatar agar refresh otomatis
-const originalUploadAvatar = uploadAvatar;
-uploadAvatar = async function(input) {
-  if (!input?.files?.[0]) return;
-  
-  toast('⏳ Mengupload foto...');
-  try {
-    const url = await window._SB.uploadAvatarFile(CURRENT_USER.id, input.files[0]);
-    await window._SB.updateProfile(CURRENT_USER.id, { avatar_url: url });
-    
-    // Refresh profile dari database
-    await refreshProfileFromSupabase();
-    
-    toast('✅ Foto profil diperbarui!');
-  } catch(e) {
-    toast('❌ Gagal upload foto: ' + e.message, true);
-  }
-};
-
-// Override uploadCover agar refresh otomatis
-const originalUploadCover = uploadCover;
-uploadCover = async function(input) {
-  if (!input?.files?.[0]) return;
-  
-  toast('⏳ Mengupload cover...');
-  try {
-    const url = await window._SB.uploadCoverFile(CURRENT_USER.id, input.files[0]);
-    await window._SB.updateProfile(CURRENT_USER.id, { cover_url: url });
-    
-    // Refresh profile dari database
-    await refreshProfileFromSupabase();
-    
-    toast('✅ Cover diperbarui!');
-  } catch(e) {
-    toast('❌ Gagal upload cover: ' + e.message, true);
-  }
-};
-
-// Override renderProfil agar selalu pakai CURRENT_PROFILE fresh
-const originalRenderProfil = renderProfil;
-renderProfil = function() {
-  if (!CURRENT_USER) { 
-    openAuthModal(); 
-    return; 
-  }
-  
-  // Jika CURRENT_PROFILE belum ada, ambil dari database
-  if (!CURRENT_PROFILE) {
-    refreshProfileFromSupabase().then(() => {
-      originalRenderProfil();
-    });
-    return;
-  }
-  
-  // Gunakan CURRENT_PROFILE langsung (sudah fresh dari database)
-  const profile = CURRENT_PROFILE;
-  const contents = DB.getArr('contents').filter(c => c.userId === CURRENT_USER.id);
-  const discussions = DB.getArr('discussions').filter(d => d.userId === CURRENT_USER.id);
- 
-  // Update UI
-  const nameEl = document.getElementById('profil-name');
-  if (nameEl) nameEl.textContent = profile.full_name || profile.username || 'Pengguna';
-  
-  const usernameEl = document.getElementById('profil-username');
-  if (usernameEl) usernameEl.textContent = '@' + (profile.username || 'user');
-  
-  const bioEl = document.getElementById('profil-bio');
-  if (bioEl) bioEl.textContent = profile.bio || 'Tidak ada bio';
-  
-  const locationEl = document.getElementById('info-location');
-  if (locationEl) locationEl.textContent = profile.location || 'Tidak disebutkan';
-  
-  const occupationEl = document.getElementById('info-occupation');
-  if (occupationEl) occupationEl.textContent = profile.occupation || 'Tidak disebutkan';
-  
-  const techstackEl = document.getElementById('info-techstack');
-  if (techstackEl) techstackEl.textContent = profile.tech_stack || 'Tidak disebutkan';
-  
-  const interestsEl = document.getElementById('info-interests');
-  if (interestsEl) interestsEl.textContent = profile.interests || 'Tidak disebutkan';
- 
-  // Avatar
-  const avatarImg = document.getElementById('avatar-img');
-  const avatarInitial = document.getElementById('avatar-initial');
-  if (profile.avatar_url) {
-    if (avatarImg) {
-      avatarImg.src = profile.avatar_url;
-      avatarImg.classList.remove('hidden');
-    }
-    if (avatarInitial) avatarInitial.classList.add('hidden');
-  } else {
-    const initial = (profile.full_name || profile.username || 'U')[0].toUpperCase();
-    if (avatarInitial) {
-      avatarInitial.textContent = initial;
-      avatarInitial.classList.remove('hidden');
-    }
-    if (avatarImg) avatarImg.classList.add('hidden');
-  }
-  
-  // Cover
-  const coverImg = document.getElementById('cover-img');
-  if (profile.cover_url) {
-    if (coverImg) {
-      coverImg.src = profile.cover_url;
-      coverImg.classList.remove('hidden');
-    }
-  } else {
-    if (coverImg) coverImg.classList.add('hidden');
-  }
- 
-  // Stats
-  const followersEl = document.getElementById('stat-followers');
-  if (followersEl) followersEl.textContent = profile.followers_count || 0;
-  
-  const followingEl = document.getElementById('stat-following');
-  if (followingEl) followingEl.textContent = profile.following_count || 0;
-  
-  const postsEl = document.getElementById('stat-posts');
-  if (postsEl) postsEl.textContent = contents.length;
-  
-  const likesEl = document.getElementById('stat-likes-total');
-  if (likesEl) likesEl.textContent = contents.reduce((a,c)=>a+(c.likes||0), 0);
-  
-  const commentsEl = document.getElementById('stat-comments');
-  if (commentsEl) commentsEl.textContent = discussions.reduce((a,d)=>a+(d.comments||0), 0);
-  
-  const sharesEl = document.getElementById('stat-shares');
-  if (sharesEl) sharesEl.textContent = discussions.reduce((a,d)=>a+(d.shares||0), 0);
- 
-  renderRecentUploads();
-  renderProfilKonten();
-  renderProfilDiskusi();
-};
-
-// Override openEditProfil agar pakai CURRENT_PROFILE
-const originalOpenEditProfil = openEditProfil;
-openEditProfil = function() {
-  if (!CURRENT_PROFILE) {
-    refreshProfileFromSupabase().then(() => {
-      originalOpenEditProfil();
-    });
-    return;
-  }
-  
-  const nameInput = document.getElementById('ep-name');
-  if (nameInput) nameInput.value = CURRENT_PROFILE.full_name || '';
-  
-  const usernameInput = document.getElementById('ep-username');
-  if (usernameInput) usernameInput.value = CURRENT_PROFILE.username || '';
-  
-  const bioInput = document.getElementById('ep-bio');
-  if (bioInput) bioInput.value = CURRENT_PROFILE.bio || '';
-  
-  const locationInput = document.getElementById('ep-location');
-  if (locationInput) locationInput.value = CURRENT_PROFILE.location || '';
-  
-  const occupationInput = document.getElementById('ep-occupation');
-  if (occupationInput) occupationInput.value = CURRENT_PROFILE.occupation || '';
-  
-  const techstackInput = document.getElementById('ep-techstack');
-  if (techstackInput) techstackInput.value = CURRENT_PROFILE.tech_stack || '';
-  
-  const interestsInput = document.getElementById('ep-interests');
-  if (interestsInput) interestsInput.value = CURRENT_PROFILE.interests || '';
-  
-  openModal('modal-editprofil');
-};
-
-// Tambahkan fungsi forceRefreshProfil untuk dipanggil dari halaman profil
-window.forceRefreshProfil = refreshProfileFromSupabase;
 
 init();

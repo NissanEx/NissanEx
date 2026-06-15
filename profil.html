@@ -7,7 +7,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/menu.css">
+<link rel="stylesheet" href="css/menu.css" />
 <script type="module" src="supabase.js"></script>
 </head>
 <body class="flex min-h-screen">
@@ -61,8 +61,8 @@
         <span class="text-lg font-bold brand-lora">Nissan Ex</span>
       </div>
       <div class="flex items-center gap-2">
-        <button onclick="toggleMobileSearch()" class="p-2"><i class="fas fa-search text-xl"></i></button>
-        <button onclick="location.reload()" class="p-2"><i class="fas fa-user-circle text-xl"></i></button>
+        <button onclick="document.getElementById('mobile-search-bar').classList.toggle('hidden')" class="p-2"><i class="fas fa-search text-xl"></i></button>
+        <a href="profil.html" class="p-2"><i class="fas fa-user-circle text-xl"></i></a>
       </div>
     </div>
     <div id="mobile-search-bar" class="hidden lg:hidden mb-4">
@@ -76,181 +76,186 @@
         <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-500"><i class="fas fa-search"></i></span>
         <input id="global-search" type="text" oninput="handleSearch(this.value)" placeholder="Cari konten atau kategori..." class="w-full bg-black text-white py-3.5 pl-12 pr-4 rounded-2xl focus:ring-2 focus:ring-gray-700 outline-none placeholder:text-gray-500">
       </div>
-      <button onclick="location.reload()" class="p-3 hover:bg-gray-200 rounded-xl transition">
+      <a href="profil.html" class="p-3 hover:bg-gray-200 rounded-xl transition">
         <i class="fas fa-user-circle text-2xl text-black"></i>
-      </button>
+      </a>
     </div>
+    <div id="search-results" class="hidden absolute z-50 bg-white rounded-2xl shadow-2xl border border-gray-100 mt-1 w-full max-w-2xl"></div>
   </header>
 
-  <!-- ===== KONTEN PROFIL ===== -->
-  
-  <!-- Cover -->
-  <div class="mb-6">
-    <div class="relative w-full h-48 md:h-64 bg-gradient-to-r from-zinc-900 to-zinc-700 rounded-[2rem] shadow-lg overflow-hidden">
-      <img id="cover-img" src="" class="w-full h-full object-cover hidden">
-      <label class="absolute top-4 right-4 bg-black/70 hover:bg-black text-white px-4 py-2 rounded-xl cursor-pointer flex items-center gap-2 text-sm font-bold">
-        <i class="fas fa-camera"></i> Ubah Cover
-        <input type="file" accept="image/*" onchange="uploadCover(this)" class="hidden">
-      </label>
-    </div>
-    
-    <!-- Profile card -->
-    <div class="bg-white rounded-[2rem] shadow-xl border border-gray-100 mx-4 md:mx-0 -mt-16 relative z-10 p-6 md:p-8">
-      <div class="flex flex-col md:flex-row gap-6 items-start md:items-end">
-        <div class="relative -mt-24 md:-mt-20">
-          <div id="avatar-wrap" class="w-28 h-28 md:w-36 md:h-36 rounded-[1.5rem] bg-gradient-to-br from-zinc-700 to-black shadow-xl flex items-center justify-center text-white text-5xl font-bold border-4 border-white overflow-hidden">
-            <img id="avatar-img" src="" class="w-full h-full object-cover hidden">
-            <span id="avatar-initial">?</span>
+  <!-- ===== PAGE: PROFIL ===== -->
+  <div id="page-profil" class="page-content active">
+    <!-- Cover -->
+    <div class="mb-6">
+      <div class="relative w-full h-48 md:h-64 bg-gradient-to-r from-zinc-900 to-zinc-700 rounded-[2rem] shadow-lg overflow-hidden">
+        <img id="cover-img" src="" class="w-full h-full object-cover hidden">
+        <label class="absolute top-4 right-4 bg-black/70 hover:bg-black text-white px-4 py-2 rounded-xl cursor-pointer flex items-center gap-2 text-sm font-bold">
+          <i class="fas fa-camera"></i> Ubah Cover
+          <input type="file" accept="image/*" onchange="uploadCover(this)" class="hidden">
+        </label>
+      </div>
+      <!-- Profile card -->
+      <div class="bg-white rounded-[2rem] shadow-xl border border-gray-100 mx-4 md:mx-0 -mt-16 relative z-10 p-6 md:p-8">
+        <div class="flex flex-col md:flex-row gap-6 items-start md:items-end">
+          <div class="relative -mt-24 md:-mt-20">
+            <div id="avatar-wrap" class="w-28 h-28 md:w-36 md:h-36 rounded-[1.5rem] bg-gradient-to-br from-zinc-700 to-black shadow-xl flex items-center justify-center text-white text-5xl font-bold border-4 border-white overflow-hidden">
+              <img id="avatar-img" src="" class="w-full h-full object-cover hidden">
+              <span id="avatar-initial">S</span>
+            </div>
+            <label class="absolute bottom-2 right-2 bg-black text-white p-2 rounded-lg cursor-pointer hover:bg-zinc-800 transition shadow">
+              <i class="fas fa-camera text-xs"></i>
+              <input type="file" accept="image/*" onchange="uploadAvatar(this)" class="hidden">
+            </label>
           </div>
-          <label class="absolute bottom-2 right-2 bg-black text-white p-2 rounded-lg cursor-pointer hover:bg-zinc-800 transition shadow">
-            <i class="fas fa-camera text-xs"></i>
-            <input type="file" accept="image/*" onchange="uploadAvatar(this)" class="hidden">
-          </label>
-        </div>
-        <div class="flex-1 pb-2">
-          <h1 id="profil-name" class="text-3xl font-bold text-black mb-1 tracking-tight">Memuat...</h1>
-          <p id="profil-username" class="text-gray-400 mb-1">@memuat</p>
-          <p id="profil-bio" class="text-gray-600 text-sm mb-4">Memuat data profil...</p>
-          <div class="flex gap-2 flex-wrap">
-            <button onclick="openUploadModal()" class="bg-black text-white px-5 py-2 rounded-xl font-bold hover:bg-zinc-800 transition flex items-center gap-2 text-sm">
-              <i class="fas fa-cloud-upload-alt"></i> Upload Konten
-            </button>
-            <button onclick="openEditProfil()" class="border-2 border-black text-black px-5 py-2 rounded-xl font-bold hover:bg-gray-50 transition text-sm flex items-center gap-2">
-              <i class="fas fa-pen"></i> Edit Profil
-            </button>
+          <div class="flex-1 pb-2">
+            <h1 id="profil-name" class="text-3xl font-bold text-black mb-1 tracking-tight">Memuat...</h1>
+            <p id="profil-username" class="text-gray-400 mb-1">@memuat</p>
+            <p id="profil-bio" class="text-gray-600 text-sm mb-4">Memuat data profil...</p>
+            <div class="flex gap-2 flex-wrap">
+              <button onclick="openUploadModal()" class="bg-black text-white px-5 py-2 rounded-xl font-bold hover:bg-zinc-800 transition flex items-center gap-2 text-sm">
+                <i class="fas fa-cloud-upload-alt"></i> Upload Konten
+              </button>
+              <button onclick="openEditProfil()" class="border-2 border-black text-black px-5 py-2 rounded-xl font-bold hover:bg-gray-50 transition text-sm flex items-center gap-2">
+                <i class="fas fa-pen"></i> Edit Profil
+              </button>
+            </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- Stats -->
-  <div class="grid grid-cols-3 md:grid-cols-6 gap-4 mb-8">
-    <div class="bg-white rounded-[1.5rem] shadow border border-gray-100 p-4 text-center">
-      <div id="stat-followers" class="text-2xl font-bold text-black">0</div>
-      <p class="text-xs text-gray-500 mt-1">Pengikut</p>
-    </div>
-    <div class="bg-white rounded-[1.5rem] shadow border border-gray-100 p-4 text-center">
-      <div id="stat-following" class="text-2xl font-bold text-black">0</div>
-      <p class="text-xs text-gray-500 mt-1">Mengikuti</p>
-    </div>
-    <div class="bg-white rounded-[1.5rem] shadow border border-gray-100 p-4 text-center">
-      <div id="stat-posts" class="text-2xl font-bold text-black">0</div>
-      <p class="text-xs text-gray-500 mt-1">Postingan</p>
-    </div>
-    <div class="bg-white rounded-[1.5rem] shadow border border-gray-100 p-4 text-center">
-      <div id="stat-likes-total" class="text-2xl font-bold text-black">0</div>
-      <p class="text-xs text-gray-500 mt-1">Suka</p>
-    </div>
-    <div class="bg-white rounded-[1.5rem] shadow border border-gray-100 p-4 text-center">
-      <div id="stat-comments" class="text-2xl font-bold text-black">0</div>
-      <p class="text-xs text-gray-500 mt-1">Komentar</p>
-    </div>
-    <div class="bg-white rounded-[1.5rem] shadow border border-gray-100 p-4 text-center">
-      <div id="stat-shares" class="text-2xl font-bold text-black">0</div>
-      <p class="text-xs text-gray-500 mt-1">Bagikan</p>
-    </div>
-  </div>
-
-  <!-- About + Upload section -->
-  <div class="grid md:grid-cols-3 gap-6 mb-8">
-    <div class="md:col-span-2 bg-white rounded-[2rem] shadow-xl border border-gray-100 p-8">
-      <h2 class="text-2xl font-bold text-black mb-6">Tentang Saya</h2>
-      <div class="space-y-4 text-gray-700 text-sm">
-        <div class="flex items-start gap-4">
-          <i class="fas fa-map-marker-alt text-black mt-0.5 flex-shrink-0"></i>
-          <div><p class="font-bold text-black">Lokasi</p><p id="info-location">-</p></div>
-        </div>
-        <div class="flex items-start gap-4">
-          <i class="fas fa-briefcase text-black mt-0.5 flex-shrink-0"></i>
-          <div><p class="font-bold text-black">Pekerjaan</p><p id="info-occupation">-</p></div>
-        </div>
-        <div class="flex items-start gap-4">
-          <i class="fas fa-code text-black mt-0.5 flex-shrink-0"></i>
-          <div><p class="font-bold text-black">Tech Stack</p><p id="info-techstack">-</p></div>
-        </div>
-        <div class="flex items-start gap-4">
-          <i class="fas fa-heart text-black mt-0.5 flex-shrink-0"></i>
-          <div><p class="font-bold text-black">Minat</p><p id="info-interests">-</p></div>
-        </div>
+    <!-- Stats -->
+    <div class="grid grid-cols-3 md:grid-cols-6 gap-4 mb-8">
+      <div class="bg-white rounded-[1.5rem] shadow border border-gray-100 p-4 text-center">
+        <div id="stat-followers" class="text-2xl font-bold text-black">0</div>
+        <p class="text-xs text-gray-500 mt-1">Pengikut</p>
+      </div>
+      <div class="bg-white rounded-[1.5rem] shadow border border-gray-100 p-4 text-center">
+        <div id="stat-following" class="text-2xl font-bold text-black">0</div>
+        <p class="text-xs text-gray-500 mt-1">Mengikuti</p>
+      </div>
+      <div class="bg-white rounded-[1.5rem] shadow border border-gray-100 p-4 text-center">
+        <div id="stat-posts" class="text-2xl font-bold text-black">0</div>
+        <p class="text-xs text-gray-500 mt-1">Postingan</p>
+      </div>
+      <div class="bg-white rounded-[1.5rem] shadow border border-gray-100 p-4 text-center">
+        <div id="stat-likes-total" class="text-2xl font-bold text-black">0</div>
+        <p class="text-xs text-gray-500 mt-1">Suka</p>
+      </div>
+      <div class="bg-white rounded-[1.5rem] shadow border border-gray-100 p-4 text-center">
+        <div id="stat-comments" class="text-2xl font-bold text-black">0</div>
+        <p class="text-xs text-gray-500 mt-1">Komentar</p>
+      </div>
+      <div class="bg-white rounded-[1.5rem] shadow border border-gray-100 p-4 text-center">
+        <div id="stat-shares" class="text-2xl font-bold text-black">0</div>
+        <p class="text-xs text-gray-500 mt-1">Bagikan</p>
       </div>
     </div>
 
-    <!-- Upload panel -->
-    <div class="bg-white rounded-[2rem] shadow-xl border border-gray-100 p-6">
-      <h3 class="text-xl font-bold text-black mb-5 flex items-center gap-2">
-        <i class="fas fa-cloud-upload-alt"></i> Upload Konten
-      </h3>
-      <div class="flex gap-2 mb-5 bg-gray-100 p-1 rounded-xl">
-        <button onclick="setUploadTab('konten')" class="upload-tab active flex-1 text-center" id="tab-konten">
-          <i class="fas fa-file-alt mr-1"></i> Konten
-        </button>
-        <button onclick="setUploadTab('linkweb')" class="upload-tab flex-1 text-center" id="tab-linkweb">
-          <i class="fas fa-link mr-1"></i> Link Web
-        </button>
-      </div>
-
-      <div id="upload-konten-panel">
-        <div class="drop-zone mb-3" id="drop-zone-mini" onclick="document.getElementById('mini-file').click()">
-          <input type="file" id="mini-file" accept="image/*,video/*,.pdf,.doc,.docx" onchange="handleMiniFile(this)" class="hidden">
-          <i class="fas fa-cloud-upload-alt text-2xl text-gray-300 mb-2 block"></i>
-          <p class="font-bold text-black text-xs mb-1">Drag & drop atau klik</p>
-          <p class="text-xs text-gray-400">Image, Video, PDF, Dokumen</p>
-        </div>
-        <div id="mini-file-preview" class="hidden mb-3 p-3 bg-gray-50 rounded-xl flex items-center gap-3">
-          <i class="fas fa-file text-gray-400"></i>
-          <div class="flex-1 min-w-0">
-            <p id="mini-file-name" class="text-xs font-bold truncate"></p>
-            <p id="mini-file-size" class="text-xs text-gray-400"></p>
+    <!-- About + Upload section -->
+    <div class="grid md:grid-cols-3 gap-6 mb-8">
+      <div class="md:col-span-2 bg-white rounded-[2rem] shadow-xl border border-gray-100 p-8">
+        <h2 class="text-2xl font-bold text-black mb-6">Tentang Saya</h2>
+        <div class="space-y-4 text-gray-700 text-sm">
+          <div class="flex items-start gap-4">
+            <i class="fas fa-map-marker-alt text-black mt-0.5 flex-shrink-0"></i>
+            <div><p class="font-bold text-black">Lokasi</p><p id="info-location">-</p></div>
           </div>
-          <button onclick="clearMiniFile()" class="text-gray-400 hover:text-red-500"><i class="fas fa-times"></i></button>
+          <div class="flex items-start gap-4">
+            <i class="fas fa-briefcase text-black mt-0.5 flex-shrink-0"></i>
+            <div><p class="font-bold text-black">Pekerjaan</p><p id="info-occupation">-</p></div>
+          </div>
+          <div class="flex items-start gap-4">
+            <i class="fas fa-code text-black mt-0.5 flex-shrink-0"></i>
+            <div><p class="font-bold text-black">Tech Stack</p><p id="info-techstack">-</p></div>
+          </div>
+          <div class="flex items-start gap-4">
+            <i class="fas fa-heart text-black mt-0.5 flex-shrink-0"></i>
+            <div><p class="font-bold text-black">Minat</p><p id="info-interests">-</p></div>
+          </div>
         </div>
-        <button onclick="openUploadModal()" class="w-full bg-black text-white py-2.5 rounded-xl font-bold text-sm hover:bg-zinc-800 transition">
-          <i class="fas fa-upload mr-2"></i>Upload & Detail
+      </div>
+
+      <!-- Upload panel -->
+      <div class="bg-white rounded-[2rem] shadow-xl border border-gray-100 p-6">
+        <h3 class="text-xl font-bold text-black mb-5 flex items-center gap-2">
+          <i class="fas fa-cloud-upload-alt"></i> Upload Konten
+        </h3>
+        <div class="flex gap-2 mb-5 bg-gray-100 p-1 rounded-xl">
+          <button onclick="setUploadTab('konten')" class="upload-tab active flex-1 text-center" id="tab-konten">
+            <i class="fas fa-file-alt mr-1"></i> Konten
+          </button>
+          <button onclick="setUploadTab('linkweb')" class="upload-tab flex-1 text-center" id="tab-linkweb">
+            <i class="fas fa-link mr-1"></i> Link Web
+          </button>
+        </div>
+
+        <!-- KONTEN UPLOAD -->
+        <div id="upload-konten-panel">
+          <div class="drop-zone mb-3" id="drop-zone-mini" onclick="document.getElementById('mini-file').click()" ondragover="event.preventDefault();this.classList.add('hover')" ondragleave="this.classList.remove('hover')" ondrop="handleMiniDrop(event)">
+            <input type="file" id="mini-file" accept="image/*,video/*,.pdf,.doc,.docx" onchange="handleMiniFile(this)">
+            <i class="fas fa-cloud-upload-alt text-2xl text-gray-300 mb-2 block"></i>
+            <p class="font-bold text-black text-xs mb-1">Drag & drop atau klik</p>
+            <p class="text-xs text-gray-400">Image, Video, PDF, Dokumen</p>
+          </div>
+          <div id="mini-file-preview" class="hidden mb-3 p-3 bg-gray-50 rounded-xl flex items-center gap-3">
+            <i class="fas fa-file text-gray-400"></i>
+            <div class="flex-1 min-w-0">
+              <p id="mini-file-name" class="text-xs font-bold truncate"></p>
+              <p id="mini-file-size" class="text-xs text-gray-400"></p>
+            </div>
+            <button onclick="clearMiniFile()" class="text-gray-400 hover:text-red-500"><i class="fas fa-times"></i></button>
+          </div>
+          <button onclick="openUploadModal()" class="w-full bg-black text-white py-2.5 rounded-xl font-bold text-sm hover:bg-zinc-800 transition">
+            <i class="fas fa-upload mr-2"></i>Upload & Detail
+          </button>
+        </div>
+
+        <!-- LINK WEB UPLOAD -->
+        <div id="upload-linkweb-panel" class="hidden">
+          <button onclick="openLinkModal()" class="w-full border-2 border-dashed border-gray-300 text-gray-500 py-8 rounded-xl font-bold text-sm hover:border-black hover:text-black transition text-center">
+            <i class="fas fa-link text-2xl mb-2 block text-gray-300"></i> Tambah Link Web
+          </button>
+        </div>
+
+        <!-- Recent uploads -->
+        <div class="mt-4">
+          <p class="text-xs font-bold text-black mb-2 uppercase tracking-widest">Upload Terbaru</p>
+          <div id="recent-uploads" class="space-y-2"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Posts / Activity — TAB: Konten & Diskusi -->
+    <div class="bg-white rounded-[2rem] shadow-xl border border-gray-100 p-8">
+      <div class="flex items-center gap-6 mb-8 border-b border-gray-100 pb-4">
+        <button onclick="switchProfilTab('konten')" id="profil-tab-konten"
+          class="profil-tab-btn active text-lg font-bold text-black border-b-2 border-black pb-3 -mb-[1.05rem] transition">
+          <i class="fas fa-th-large mr-2 text-sm"></i>Konten
+        </button>
+        <button onclick="switchProfilTab('diskusi')" id="profil-tab-diskusi"
+          class="profil-tab-btn text-lg font-bold text-gray-400 border-b-2 border-transparent pb-3 -mb-[1.05rem] hover:text-black transition">
+          <i class="fas fa-comments mr-2 text-sm"></i>Diskusi
         </button>
       </div>
-
-      <div id="upload-linkweb-panel" class="hidden">
-        <button onclick="openLinkModal()" class="w-full border-2 border-dashed border-gray-300 text-gray-500 py-8 rounded-xl font-bold text-sm hover:border-black hover:text-black transition text-center">
-          <i class="fas fa-link text-2xl mb-2 block text-gray-300"></i> Tambah Link Web
-        </button>
+      <div id="profil-panel-konten">
+        <div id="profil-konten-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5"></div>
       </div>
-
-      <div class="mt-4">
-        <p class="text-xs font-bold text-black mb-2 uppercase tracking-widest">Upload Terbaru</p>
-        <div id="recent-uploads" class="space-y-2"></div>
+      <div id="profil-panel-diskusi" class="hidden">
+        <div id="profil-activity" class="space-y-0"></div>
       </div>
-    </div>
-  </div>
-
-  <!-- Posts / Activity -->
-  <div class="bg-white rounded-[2rem] shadow-xl border border-gray-100 p-8">
-    <div class="flex items-center gap-6 mb-8 border-b border-gray-100 pb-4">
-      <button onclick="switchProfilTab('konten')" id="profil-tab-konten"
-        class="profil-tab-btn active text-lg font-bold text-black border-b-2 border-black pb-3 -mb-[1.05rem] transition">
-        <i class="fas fa-th-large mr-2 text-sm"></i>Konten
-      </button>
-      <button onclick="switchProfilTab('diskusi')" id="profil-tab-diskusi"
-        class="profil-tab-btn text-lg font-bold text-gray-400 border-b-2 border-transparent pb-3 -mb-[1.05rem] hover:text-black transition">
-        <i class="fas fa-comments mr-2 text-sm"></i>Diskusi
-      </button>
-    </div>
-    <div id="profil-panel-konten">
-      <div id="profil-konten-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5"></div>
-    </div>
-    <div id="profil-panel-diskusi" class="hidden">
-      <div id="profil-activity" class="space-y-0"></div>
     </div>
   </div>
 
 </main>
 
-<!-- MODALS -->
+<!-- ===== MODALS ===== -->
 <div id="modal-upload" class="modal-backdrop" onclick="closeModalBackdrop(event,'modal-upload')">
   <div class="modal-box">
     <button onclick="closeModal('modal-upload')" class="absolute top-4 right-4 text-gray-400 hover:text-black"><i class="fas fa-times text-lg"></i></button>
     <h2 class="text-2xl font-bold mb-1">Upload Konten</h2>
     <p class="text-sm text-gray-400 mb-6">Tambah file konten ke platform</p>
+
     <div class="space-y-4">
       <div><label class="form-label">Judul Konten *</label><input id="up-title" type="text" class="form-input"></div>
       <div><label class="form-label">Kategori *</label><select id="up-category" class="form-input"><option value="">Pilih kategori...</option></select></div>
@@ -259,6 +264,7 @@
       <div><label class="form-label">Sisipkan URL Web <span class="text-gray-400">(opsional)</span></label><input id="up-url" type="url" class="form-input" placeholder="https://..."></div>
       <div><label class="form-label">Thumbnail / Icon</label><div class="flex items-center gap-3"><div class="w-16 h-16 rounded-xl bg-gray-100"><img id="thumb-preview" class="hidden"></div><input type="file" accept="image/*" onchange="handleThumbFile(this)"></div></div>
     </div>
+
     <div class="flex gap-3 mt-6"><button onclick="closeModal('modal-upload')" class="flex-1 border-2 py-3 rounded-xl">Batal</button><button onclick="submitUpload()" class="flex-1 bg-black text-white py-3 rounded-xl">Upload</button></div>
   </div>
 </div>
@@ -309,6 +315,7 @@
   </div>
 </div>
 
+<!-- ===== OVERLAY & TOAST ===== -->
 <div id="overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/60 z-40 hidden lg:hidden"></div>
 <div id="toast" class="fixed bottom-4 right-4 z-50"></div>
 
