@@ -1,3 +1,4 @@
+<!-- FILE: index.html (FULL REVISI - sudah termasuk auth guard untuk semua halaman) -->
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -11,9 +12,8 @@
 <script type="module" src="supabase.js"></script>
 </head>
 <body class="flex min-h-screen">
-    
 
-<!-- SIDEBAR (hanya navigasi internal + link ke profil & pengaturan) -->
+<!-- SIDEBAR -->
 <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-64 bg-black text-white transform -translate-x-full lg:translate-x-0 transition-transform duration-300 shadow-2xl flex flex-col">
   <div class="p-6 flex items-center gap-3">
     <div class="w-9 h-9 bg-white rounded-xl flex items-center justify-center"><span class="text-black font-bold text-lg">N</span></div>
@@ -55,7 +55,6 @@
 </aside>
 
 <main class="flex-1 lg:ml-64 p-4 md:p-8 min-h-screen">
-  <!-- HEADER -->
   <header class="mb-8">
     <div class="lg:hidden flex items-center justify-between gap-4 mb-4">
       <div class="flex items-center gap-3">
@@ -63,7 +62,7 @@
         <span class="text-lg font-bold brand-lora">Nissan Ex</span>
       </div>
       <div class="flex items-center gap-2">
-        <button onclick="document.getElementById('mobile-search-bar').classList.toggle('hidden'); window.navigateTo('kategori'); setTimeout(()=>document.querySelector('#mobile-search-bar input').focus(),100);" class="p-2"><i class="fas fa-search text-xl"></i></button>
+        <button onclick="document.getElementById('mobile-search-bar').classList.toggle('hidden')" class="p-2"><i class="fas fa-search text-xl"></i></button>
         <a href="profil.html" class="p-2"><i class="fas fa-user-circle text-xl"></i></a>
       </div>
     </div>
@@ -80,7 +79,6 @@
       </div>
       <a href="profil.html" class="p-3 hover:bg-gray-200 rounded-xl transition"><i class="fas fa-user-circle text-2xl text-black"></i></a>
     </div>
-    <div id="search-results" class="hidden absolute z-50 bg-white rounded-2xl shadow-2xl border border-gray-100 mt-1 w-full max-w-2xl"></div>
   </header>
 
   <!-- PAGE: BERANDA -->
@@ -155,23 +153,17 @@
 <div id="overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/60 z-40 hidden lg:hidden"></div>
 <div id="toast"></div>
 
-<!-- SEMUA MODAL (salin persis dari menu.html) -->
-<!-- ===== MODAL UPLOAD KONTEN ===== -->
+<!-- MODALS -->
 <div id="modal-upload" class="modal-backdrop" onclick="closeModalBackdrop(event,'modal-upload')"><div class="modal-box"><button onclick="closeModal('modal-upload')" class="absolute top-4 right-4 text-gray-400 hover:text-black"><i class="fas fa-times text-lg"></i></button><h2 class="text-2xl font-bold mb-1">Upload Konten</h2><p class="text-sm text-gray-400 mb-6">Tambah file konten ke platform</p><div class="space-y-4"><div><label class="form-label">Judul Konten *</label><input id="up-title" type="text" class="form-input" placeholder="Masukkan judul..."></div><div><label class="form-label">Kategori *</label><select id="up-category" class="form-input"><option value="">Pilih kategori...</option></select></div><div><label class="form-label">Deskripsi</label><textarea id="up-desc" class="form-input" rows="3" placeholder="Deskripsi singkat konten..."></textarea></div><div><label class="form-label">File Konten</label><div class="drop-zone" id="drop-zone-main" onclick="document.getElementById('main-file').click()" ondragover="event.preventDefault();this.classList.add('hover')" ondragleave="this.classList.remove('hover')" ondrop="handleMainDrop(event)"><input type="file" id="main-file" accept="image/*,video/*,.pdf,.doc,.docx" onchange="handleMainFile(this)"><i class="fas fa-cloud-upload-alt text-3xl text-gray-300 mb-2 block"></i><p class="font-bold text-sm mb-1">Klik atau drag file di sini</p><p class="text-xs text-gray-400">Image, Video, PDF, Dokumen (max 50MB)</p></div><div id="main-file-info" class="hidden mt-2 p-3 bg-gray-50 rounded-xl flex items-center gap-3"><i id="main-file-icon" class="fas fa-file text-gray-400 text-xl"></i><div class="flex-1 min-w-0"><p id="main-file-name" class="text-sm font-bold truncate"></p><p id="main-file-size" class="text-xs text-gray-400"></p></div><button onclick="clearMainFile()" class="text-gray-400 hover:text-red-500 text-sm"><i class="fas fa-times"></i></button></div></div><div><label class="form-label">Sisipkan URL Web <span class="text-gray-400 font-normal normal-case">(opsional)</span></label><div class="relative"><span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400"><i class="fas fa-link text-sm"></i></span><input id="up-url" type="url" class="form-input pl-9" placeholder="https://contoh.com"></div></div><div><label class="form-label">Thumbnail / Icon <span class="text-gray-400 font-normal normal-case">(opsional)</span></label><div class="flex items-center gap-3"><div id="thumb-preview-wrap" class="w-16 h-16 rounded-xl bg-gray-100 flex items-center justify-center overflow-hidden border border-gray-200"><img id="thumb-preview" src="" class="w-full h-full object-cover hidden"><i id="thumb-icon-placeholder" class="fas fa-image text-gray-300 text-xl"></i></div><div class="flex-1"><label class="block cursor-pointer"><span class="bg-gray-100 hover:bg-gray-200 text-black text-sm font-bold px-4 py-2 rounded-lg transition inline-flex items-center gap-2"><i class="fas fa-upload"></i> Pilih Thumbnail</span><input type="file" accept="image/*" onchange="handleThumbFile(this)" class="hidden"></label></div></div></div></div><div class="flex gap-3 mt-6"><button onclick="closeModal('modal-upload')" class="flex-1 border-2 border-gray-200 text-black py-3 rounded-xl font-bold hover:bg-gray-50 transition">Batal</button><button onclick="submitUpload()" class="flex-1 bg-black text-white py-3 rounded-xl font-bold hover:bg-zinc-800 transition"><i class="fas fa-upload mr-2"></i>Upload</button></div></div></div>
 
-<!-- MODAL LINK WEB -->
 <div id="modal-link" class="modal-backdrop" onclick="closeModalBackdrop(event,'modal-link')"><div class="modal-box"><button onclick="closeModal('modal-link')" class="absolute top-4 right-4 text-gray-400 hover:text-black"><i class="fas fa-times text-lg"></i></button><h2 class="text-2xl font-bold mb-1">Tambah Link Web</h2><p class="text-sm text-gray-400 mb-6">Simpan referensi website atau proyek</p><div class="space-y-4"><div><label class="form-label">Judul Link *</label><input id="lk-title" type="text" class="form-input" placeholder="Nama website / proyek..."></div><div><label class="form-label">URL *</label><input id="lk-url" type="url" class="form-input" placeholder="https://..."></div><div><label class="form-label">Kategori</label><select id="lk-category" class="form-input"><option value="">Pilih kategori...</option></select></div><div><label class="form-label">Deskripsi</label><textarea id="lk-desc" class="form-input" rows="2" placeholder="Deskripsi singkat..."></textarea></div><div><label class="form-label">Icon / Logo <span class="text-gray-400 font-normal normal-case">(opsional)</span></label><div class="flex items-center gap-3"><div id="lk-icon-preview-wrap" class="w-14 h-14 rounded-xl bg-gray-100 flex items-center justify-center overflow-hidden border border-gray-200 flex-shrink-0"><img id="lk-icon-preview" src="" class="w-full h-full object-cover hidden"><i id="lk-icon-placeholder" class="fas fa-globe text-gray-300 text-xl"></i></div><div class="flex-1"><label class="cursor-pointer"><span class="bg-gray-100 hover:bg-gray-200 text-black text-sm font-bold px-4 py-2 rounded-lg transition inline-flex items-center gap-2"><i class="fas fa-upload"></i> Upload Icon</span><input type="file" accept="image/*" onchange="handleLinkIcon(this)" class="hidden"></label></div></div></div><div><label class="form-label">Status</label><select id="lk-status" class="form-input"><option value="active">Aktif / Live</option><option value="development">Development</option><option value="archived">Arsip</option></select></div></div><div class="flex gap-3 mt-6"><button onclick="closeModal('modal-link')" class="flex-1 border-2 border-gray-200 text-black py-3 rounded-xl font-bold hover:bg-gray-50 transition">Batal</button><button onclick="submitLink()" class="flex-1 bg-black text-white py-3 rounded-xl font-bold hover:bg-zinc-800 transition"><i class="fas fa-link mr-2"></i>Simpan Link</button></div></div></div>
 
-<!-- MODAL POST DISKUSI -->
 <div id="modal-post" class="modal-backdrop" onclick="closeModalBackdrop(event,'modal-post')"><div class="modal-box"><button onclick="closeModal('modal-post')" class="absolute top-4 right-4 text-gray-400 hover:text-black"><i class="fas fa-times text-lg"></i></button><h2 class="text-2xl font-bold mb-5">Buat Postingan Baru</h2><div class="flex gap-4"><div id="modal-post-avatar" class="w-10 h-10 rounded-xl bg-black flex items-center justify-center text-white font-bold flex-shrink-0 text-sm">?</div><textarea id="post-content" class="form-input flex-1" rows="4" placeholder="Bagikan pemikiranmu..."></textarea></div><div class="flex gap-3 mt-4"><button onclick="closeModal('modal-post')" class="flex-1 border-2 border-gray-200 py-3 rounded-xl font-bold hover:bg-gray-50 transition">Batal</button><button onclick="submitPost()" class="flex-1 bg-black text-white py-3 rounded-xl font-bold hover:bg-zinc-800 transition">Posting</button></div></div></div>
 
-<!-- MODAL ADD PROJECT -->
 <div id="modal-project" class="modal-backdrop" onclick="closeModalBackdrop(event,'modal-project')"><div class="modal-box"><button onclick="closeModal('modal-project')" class="absolute top-4 right-4 text-gray-400 hover:text-black"><i class="fas fa-times text-lg"></i></button><h2 class="text-2xl font-bold mb-5">Tambah Project</h2><div class="space-y-4"><div><label class="form-label">Nama Project *</label><input id="proj-name" type="text" class="form-input" placeholder="Nama project..."></div><div><label class="form-label">Deskripsi</label><input id="proj-desc" type="text" class="form-input" placeholder="Deskripsi singkat..."></div><div><label class="form-label">Deploy URL</label><input id="proj-url" type="url" class="form-input" placeholder="https://..."></div><div><label class="form-label">Tech Stack</label><input id="proj-tech" type="text" class="form-input" placeholder="React, Node.js, Supabase..."></div><div><label class="form-label">Status</label><select id="proj-status" class="form-input"><option value="live">Live</option><option value="development">Development</option><option value="archived">Archived</option></select></div><div class="grid grid-cols-2 gap-3"><div><label class="form-label">Performance (%)</label><input id="proj-perf" type="number" min="0" max="100" class="form-input" placeholder="85"></div><div><label class="form-label">Uptime (%)</label><input id="proj-uptime" type="number" min="0" max="100" class="form-input" placeholder="99"></div></div></div><div class="flex gap-3 mt-6"><button onclick="closeModal('modal-project')" class="flex-1 border-2 border-gray-200 py-3 rounded-xl font-bold hover:bg-gray-50 transition">Batal</button><button onclick="submitProject()" class="flex-1 bg-black text-white py-3 rounded-xl font-bold hover:bg-zinc-800 transition">Simpan</button></div></div></div>
 
-<!-- MODAL EDIT PROFIL -->
 <div id="modal-editprofil" class="modal-backdrop" onclick="closeModalBackdrop(event,'modal-editprofil')"><div class="modal-box"><button onclick="closeModal('modal-editprofil')" class="absolute top-4 right-4 text-gray-400 hover:text-black"><i class="fas fa-times text-lg"></i></button><h2 class="text-2xl font-bold mb-5">Edit Profil</h2><div class="space-y-4"><div class="grid grid-cols-2 gap-3"><div><label class="form-label">Nama Lengkap</label><input id="ep-name" type="text" class="form-input"></div><div><label class="form-label">Username</label><input id="ep-username" type="text" class="form-input"></div></div><div><label class="form-label">Bio</label><textarea id="ep-bio" class="form-input" rows="2"></textarea></div><div><label class="form-label">Lokasi</label><input id="ep-location" type="text" class="form-input"></div><div><label class="form-label">Pekerjaan</label><input id="ep-occupation" type="text" class="form-input"></div><div><label class="form-label">Tech Stack</label><input id="ep-techstack" type="text" class="form-input"></div><div><label class="form-label">Minat</label><input id="ep-interests" type="text" class="form-input"></div></div><div class="flex gap-3 mt-6"><button onclick="closeModal('modal-editprofil')" class="flex-1 border-2 border-gray-200 py-3 rounded-xl font-bold hover:bg-gray-50 transition">Batal</button><button onclick="saveEditProfil()" class="flex-1 bg-black text-white py-3 rounded-xl font-bold hover:bg-zinc-800 transition">Simpan</button></div></div></div>
 
-<!-- MODAL EDIT KONTEN -->
 <div id="modal-edit-konten" class="modal-backdrop" onclick="closeModalBackdrop(event,'modal-edit-konten')"><div class="modal-box"><button onclick="closeModal('modal-edit-konten')" class="absolute top-4 right-4 text-gray-400 hover:text-black"><i class="fas fa-times text-lg"></i></button><h2 class="text-2xl font-bold mb-1">Edit Konten</h2><p class="text-sm text-gray-400 mb-6">Perbarui informasi konten</p><input type="hidden" id="edit-konten-id"><div class="space-y-4"><div><label class="form-label">Judul Konten *</label><input id="edit-konten-title" type="text" class="form-input" placeholder="Judul konten..."></div><div><label class="form-label">Kategori</label><select id="edit-konten-category" class="form-input"><option value="">Pilih kategori...</option></select></div><div><label class="form-label">Deskripsi</label><textarea id="edit-konten-desc" class="form-input" rows="3" placeholder="Deskripsi singkat..."></textarea></div><div><label class="form-label">URL Web <span class="text-gray-400 font-normal normal-case">(opsional)</span></label><div class="relative"><span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400"><i class="fas fa-link text-sm"></i></span><input id="edit-konten-url" type="url" class="form-input pl-9" placeholder="https://..."></div></div></div><div class="flex gap-3 mt-6"><button onclick="closeModal('modal-edit-konten')" class="flex-1 border-2 border-gray-200 py-3 rounded-xl font-bold hover:bg-gray-50 transition">Batal</button><button onclick="saveEditKonten()" class="flex-1 bg-black text-white py-3 rounded-xl font-bold hover:bg-zinc-800 transition"><i class="fas fa-save mr-2"></i>Simpan</button></div></div></div>
 
 <script src="js/menu.js"></script>
@@ -185,6 +177,13 @@
         return;
       }
       window.location.href = page === 'profil' ? 'profil.html' : 'pengaturan.html';
+      return;
+    }
+    
+    // Halaman disimpan butuh login (di dalam index.html)
+    if (page === 'disimpan' && !window.CURRENT_USER) {
+      openAuthModal();
+      toast('⚠️ Login dulu untuk melihat koleksi disimpan');
       return;
     }
     

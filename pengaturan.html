@@ -1,3 +1,4 @@
+<!-- FILE: pengaturan.html (FULL REVISI - dengan auth guard yang benar) -->
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -11,31 +12,11 @@
 <script type="module" src="supabase.js"></script>
 <style>
   .page-content:not(#page-pengaturan) { display: none; }
-  #auth-required-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0,0,0,0.8);
-    z-index: 1000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    backdrop-filter: blur(4px);
-  }
-  .auth-card {
-    background: white;
-    max-width: 400px;
-    width: 90%;
-    border-radius: 2rem;
-    padding: 2rem;
-    text-align: center;
-  }
 </style>
 </head>
 <body class="flex min-h-screen">
-    <!-- AUTH BLOCKER -->
+
+<!-- AUTH BLOCKER - muncul jika belum login -->
 <div id="auth-blocker" style="position: fixed; top:0; left:0; right:0; bottom:0; background: white; z-index: 10000; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 1rem;">
   <i class="fas fa-lock text-6xl text-black mb-4 block"></i>
   <h2 class="text-2xl font-bold">Akses Terbatas</h2>
@@ -58,11 +39,10 @@
           if (user) {
             blocker.style.display = 'none';
             if (typeof init === 'function') init();
-          } else {
-            document.querySelector('main').style.opacity = '0.3';
-            document.querySelector('main').style.pointerEvents = 'none';
           }
-        } catch(e) {}
+        } catch(e) {
+          console.log('Auth check error');
+        }
       }
     }, 100);
     
@@ -78,11 +58,21 @@
     <h1 class="text-xl font-bold tracking-tight brand-lora">Nissan Ex</h1>
   </div>
   <nav class="mt-2 px-4 space-y-1 flex-1">
-    <a href="index.html" class="nav-link w-full flex items-center p-3 rounded-xl hover:bg-white/10 transition gap-3 text-sm"><i class="fas fa-home w-5 text-center"></i><span>Beranda</span></a>
-    <a href="profil.html" class="nav-link w-full flex items-center p-3 rounded-xl hover:bg-white/10 transition gap-3 text-sm"><i class="fas fa-user w-5 text-center"></i><span>Profil</span></a>
-    <button onclick="navigateTo('pengaturan')" data-page="pengaturan" class="nav-link active w-full flex items-center p-3 rounded-xl hover:bg-white/10 transition gap-3 text-sm"><i class="fas fa-cog w-5 text-center"></i><span>Pengaturan</span></button>
+    <a href="index.html" class="nav-link w-full flex items-center p-3 rounded-xl hover:bg-white/10 transition gap-3 text-sm">
+      <i class="fas fa-home w-5 text-center"></i><span>Beranda</span>
+    </a>
+    <a href="profil.html" class="nav-link w-full flex items-center p-3 rounded-xl hover:bg-white/10 transition gap-3 text-sm">
+      <i class="fas fa-user w-5 text-center"></i><span>Profil</span>
+    </a>
+    <button onclick="navigateTo('pengaturan')" data-page="pengaturan" class="nav-link active w-full flex items-center p-3 rounded-xl hover:bg-white/10 transition gap-3 text-sm">
+      <i class="fas fa-cog w-5 text-center"></i><span>Pengaturan</span>
+    </button>
   </nav>
-  <nav class="mt-2 px-4 space-y-1"><button onclick="logout()" class="w-full flex items-center p-3 rounded-xl hover:bg-white/10 transition gap-3 text-sm text-red-400"><i class="fas fa-sign-out-alt w-5 text-center"></i><span>Keluar</span></button></nav>
+  <nav class="mt-2 px-4 space-y-1">
+    <button onclick="logout()" class="w-full flex items-center p-3 rounded-xl hover:bg-white/10 transition gap-3 text-sm text-red-400">
+      <i class="fas fa-sign-out-alt w-5 text-center"></i><span>Keluar</span>
+    </button>
+  </nav>
 </aside>
 
 <main class="flex-1 lg:ml-64 p-4 md:p-8 min-h-screen">
@@ -93,7 +83,10 @@
       <a href="index.html" class="p-2"><i class="fas fa-home text-xl"></i></a>
     </div>
     <div class="hidden lg:flex items-center gap-4">
-      <div class="flex-1 relative"><span class="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-500"><i class="fas fa-search"></i></span><input id="global-search" type="text" oninput="handleSearch(this.value)" placeholder="Cari konten..." class="w-full bg-black text-white py-3.5 pl-12 pr-4 rounded-2xl outline-none"></div>
+      <div class="flex-1 relative">
+        <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-500"><i class="fas fa-search"></i></span>
+        <input id="global-search" type="text" oninput="handleSearch(this.value)" placeholder="Cari konten..." class="w-full bg-black text-white py-3.5 pl-12 pr-4 rounded-2xl outline-none">
+      </div>
       <a href="index.html" class="p-3 hover:bg-gray-200 rounded-xl transition"><i class="fas fa-home text-2xl text-black"></i></a>
     </div>
   </header>
@@ -104,16 +97,35 @@
         <h2 class="text-2xl font-bold text-black mb-6">Pengaturan Profil</h2>
         <div class="space-y-3">
           <button onclick="openEditProfil()" class="w-full flex items-center gap-3 p-4 hover:bg-gray-50 rounded-xl transition border border-gray-200">
-            <i class="fas fa-user text-black text-lg"></i><div class="text-left"><p class="font-bold text-black text-sm">Edit Profil</p><p class="text-xs text-gray-500">Ubah informasi pribadi</p></div><i class="fas fa-chevron-right text-gray-300 ml-auto text-sm"></i>
+            <i class="fas fa-user text-black text-lg"></i>
+            <div class="text-left">
+              <p class="font-bold text-black text-sm">Edit Profil</p>
+              <p class="text-xs text-gray-500">Ubah informasi pribadi</p>
+            </div>
+            <i class="fas fa-chevron-right text-gray-300 ml-auto text-sm"></i>
           </button>
           <button class="w-full flex items-center gap-3 p-4 hover:bg-gray-50 rounded-xl transition border border-gray-200">
-            <i class="fas fa-lock text-black text-lg"></i><div><p class="font-bold text-black text-sm">Keamanan & Privasi</p><p class="text-xs text-gray-500">Kelola password dan privasi</p></div><i class="fas fa-chevron-right text-gray-300 ml-auto text-sm"></i>
+            <i class="fas fa-lock text-black text-lg"></i>
+            <div>
+              <p class="font-bold text-black text-sm">Keamanan & Privasi</p>
+              <p class="text-xs text-gray-500">Kelola password dan privasi</p>
+            </div>
+            <i class="fas fa-chevron-right text-gray-300 ml-auto text-sm"></i>
           </button>
           <button class="w-full flex items-center gap-3 p-4 hover:bg-gray-50 rounded-xl transition border border-gray-200">
-            <i class="fas fa-bell text-black text-lg"></i><div><p class="font-bold text-black text-sm">Notifikasi</p><p class="text-xs text-gray-500">Kelola preferensi notifikasi</p></div><i class="fas fa-chevron-right text-gray-300 ml-auto text-sm"></i>
+            <i class="fas fa-bell text-black text-lg"></i>
+            <div>
+              <p class="font-bold text-black text-sm">Notifikasi</p>
+              <p class="text-xs text-gray-500">Kelola preferensi notifikasi</p>
+            </div>
+            <i class="fas fa-chevron-right text-gray-300 ml-auto text-sm"></i>
           </button>
           <button onclick="clearAllData()" class="w-full flex items-center gap-3 p-4 hover:bg-red-50 rounded-xl transition border border-red-200">
-            <i class="fas fa-trash text-red-500 text-lg"></i><div><p class="font-bold text-red-600 text-sm">Reset Data</p><p class="text-xs text-red-400">Hapus semua data lokal</p></div>
+            <i class="fas fa-trash text-red-500 text-lg"></i>
+            <div>
+              <p class="font-bold text-red-600 text-sm">Reset Data</p>
+              <p class="text-xs text-red-400">Hapus semua data lokal</p>
+            </div>
           </button>
         </div>
       </div>
@@ -128,28 +140,66 @@
 <div id="overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/60 z-40 hidden lg:hidden"></div>
 <div id="toast"></div>
 
-<!-- MODAL EDIT PROFIL (diperlukan) -->
-<div id="modal-editprofil" class="modal-backdrop" onclick="closeModalBackdrop(event,'modal-editprofil')"><div class="modal-box"><button onclick="closeModal('modal-editprofil')" class="absolute top-4 right-4 text-gray-400 hover:text-black"><i class="fas fa-times text-lg"></i></button><h2 class="text-2xl font-bold mb-5">Edit Profil</h2><div class="space-y-4"><div class="grid grid-cols-2 gap-3"><div><label class="form-label">Nama Lengkap</label><input id="ep-name" type="text" class="form-input"></div><div><label class="form-label">Username</label><input id="ep-username" type="text" class="form-input"></div></div><div><label class="form-label">Bio</label><textarea id="ep-bio" class="form-input" rows="2"></textarea></div><div><label class="form-label">Lokasi</label><input id="ep-location" type="text" class="form-input"></div><div><label class="form-label">Pekerjaan</label><input id="ep-occupation" type="text" class="form-input"></div><div><label class="form-label">Tech Stack</label><input id="ep-techstack" type="text" class="form-input"></div><div><label class="form-label">Minat</label><input id="ep-interests" type="text" class="form-input"></div></div><div class="flex gap-3 mt-6"><button onclick="closeModal('modal-editprofil')" class="flex-1 border-2 border-gray-200 py-3 rounded-xl font-bold hover:bg-gray-50 transition">Batal</button><button onclick="saveEditProfil()" class="flex-1 bg-black text-white py-3 rounded-xl font-bold hover:bg-zinc-800 transition">Simpan</button></div></div></div>
+<!-- MODAL EDIT PROFIL -->
+<div id="modal-editprofil" class="modal-backdrop" onclick="closeModalBackdrop(event,'modal-editprofil')">
+  <div class="modal-box">
+    <button onclick="closeModal('modal-editprofil')" class="absolute top-4 right-4 text-gray-400 hover:text-black"><i class="fas fa-times text-lg"></i></button>
+    <h2 class="text-2xl font-bold mb-5">Edit Profil</h2>
+    <div class="space-y-4">
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="form-label">Nama Lengkap</label>
+          <input id="ep-name" type="text" class="form-input">
+        </div>
+        <div>
+          <label class="form-label">Username</label>
+          <input id="ep-username" type="text" class="form-input">
+        </div>
+      </div>
+      <div>
+        <label class="form-label">Bio</label>
+        <textarea id="ep-bio" class="form-input" rows="2"></textarea>
+      </div>
+      <div>
+        <label class="form-label">Lokasi</label>
+        <input id="ep-location" type="text" class="form-input">
+      </div>
+      <div>
+        <label class="form-label">Pekerjaan</label>
+        <input id="ep-occupation" type="text" class="form-input">
+      </div>
+      <div>
+        <label class="form-label">Tech Stack</label>
+        <input id="ep-techstack" type="text" class="form-input">
+      </div>
+      <div>
+        <label class="form-label">Minat</label>
+        <input id="ep-interests" type="text" class="form-input">
+      </div>
+    </div>
+    <div class="flex gap-3 mt-6">
+      <button onclick="closeModal('modal-editprofil')" class="flex-1 border-2 border-gray-200 py-3 rounded-xl font-bold hover:bg-gray-50 transition">Batal</button>
+      <button onclick="saveEditProfil()" class="flex-1 bg-black text-white py-3 rounded-xl font-bold hover:bg-zinc-800 transition">Simpan</button>
+    </div>
+  </div>
+</div>
 
-<!-- Modal lain tidak diperlukan di pengaturan, tapi bisa ditambahkan jika ingin -->
 <script src="js/menu.js"></script>
 <script>
-  // Redirect ke beranda jika belum login
-  (async function() {
-    await new Promise(r => setTimeout(r, 500));
-    
-    if (!window.CURRENT_USER) {
-      window.location.href = 'index.html';
-      return;
-    }
-    
-    if (typeof renderPengaturan === 'function') renderPengaturan();
-  })();
-  
   window.navigateTo = function(page) {
     if (page === 'beranda') window.location.href = 'index.html';
     else if (page === 'profil') window.location.href = 'profil.html';
   };
+  
+  // Render pengaturan setelah login
+  (function() {
+    const checkInterval = setInterval(() => {
+      if (window.CURRENT_USER && typeof renderPengaturan === 'function') {
+        clearInterval(checkInterval);
+        renderPengaturan();
+      }
+    }, 100);
+  })();
 </script>
 </body>
 </html>

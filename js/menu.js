@@ -1,8 +1,7 @@
-// Supabase functions tersedia via window._SB (diload oleh module script di head)
-// Semua fungsi diakses sebagai: window._SB.getCurrentUser(), dll
+// FILE: menu.js (FULL REVISI - tanpa localStorage, semua data dari Supabase, auth guard lengkap)
 
 // ============================
-// GLOBAL STATE (memory only, no localStorage)
+// GLOBAL STATE (memory only)
 // ============================
 let CURRENT_USER = null
 let CURRENT_PROFILE = null
@@ -10,7 +9,7 @@ let CURRENT_PROFILE = null
 let categoriesCache = []
 let contentsCache = []
 let postsCache = []
-let savesCache = []           // array of target_id strings
+let savesCache = []
 let linkwebsCache = []
 let projectsCache = []
 
@@ -61,12 +60,11 @@ async function loadContents() {
       webUrl: c.display_url || null,
       views: c.views || 0,
       likes: c.likes || 0,
-      bookmarked: false,  // will be updated from savesCache
+      bookmarked: false,
       createdAt: c.created_at,
       comments: c.comments || [],
       ratings: c.ratings || []
     }))
-    // update bookmarked flag
     for (let c of contentsCache) {
       c.bookmarked = savesCache.includes(c.id)
     }
@@ -105,7 +103,6 @@ async function loadSaves() {
   try {
     const data = await window._SB.getSaves(CURRENT_USER.id)
     savesCache = data.filter(s => s.target_type === 'content').map(s => s.target_id)
-    // update bookmarked di contentsCache
     for (let c of contentsCache) {
       c.bookmarked = savesCache.includes(c.id)
     }
@@ -120,7 +117,6 @@ async function loadSaves() {
 async function loadLinkwebs() {
   if (!CURRENT_USER) return []
   try {
-    // asumsikan ada window._SB.getRefs(userId)
     const data = await window._SB.getRefs(CURRENT_USER.id)
     linkwebsCache = data.map(l => ({
       id: l.id,
@@ -217,7 +213,16 @@ async function init() {
       await loadAllData()
       updateSidebarUser()
       closeAuthModal()
-      renderPage(getCurrentPage())
+      
+      // Cek halaman saat ini dan render sesuai
+      const currentPath = window.location.pathname
+      if (currentPath.includes('profil.html')) {
+        if (typeof renderProfil === 'function') renderProfil()
+      } else if (currentPath.includes('pengaturan.html')) {
+        if (typeof renderPengaturan === 'function') renderPengaturan()
+      } else {
+        renderPage(getCurrentPage())
+      }
     } else if (event === 'SIGNED_OUT') {
       CURRENT_USER = null
       CURRENT_PROFILE = null
@@ -228,7 +233,14 @@ async function init() {
       linkwebsCache = []
       projectsCache = []
       updateSidebarUser()
-      renderBeranda()
+      
+      // Redirect ke beranda jika di halaman yang butuh auth
+      const currentPath = window.location.pathname
+      if (currentPath.includes('profil.html') || currentPath.includes('pengaturan.html')) {
+        window.location.href = 'index.html'
+      } else {
+        renderBeranda()
+      }
     }
   })
 
@@ -243,7 +255,16 @@ async function init() {
   }
 
   updateSidebarUser()
-  renderBeranda()
+  
+  // Render sesuai halaman
+  const currentPath = window.location.pathname
+  if (currentPath.includes('profil.html')) {
+    if (CURRENT_USER && typeof renderProfil === 'function') renderProfil()
+  } else if (currentPath.includes('pengaturan.html')) {
+    if (CURRENT_USER && typeof renderPengaturan === 'function') renderPengaturan()
+  } else {
+    renderBeranda()
+  }
 }
 
 // ============================
@@ -290,7 +311,7 @@ function updateSidebarUser() {
 }
 
 // ============================
-// AUTH MODAL (unchanged)
+// AUTH MODAL
 // ============================
 function openAuthModal(tab = 'login') {
   let modal = document.getElementById('modal-auth')
@@ -409,13 +430,14 @@ async function logout() {
   try {
     await window._SB.signOut()
     toast('👋 Berhasil keluar')
+    window.location.href = 'index.html'
   } catch(e) {
     toast('⚠️ Gagal logout: ' + e.message)
   }
 }
 
 // ============================
-// TEMP FILE STORAGE (memory only)
+// TEMP FILE STORAGE
 // ============================
 let tempFiles = { main: null, thumb: null, thumbFile: null, linkIcon: null }
 
@@ -428,6 +450,18 @@ function navigateTo(pageId) {
     toast('⚠️ Login dulu untuk mengakses halaman ini')
     return
   }
+  
+  // Handle halaman yang berada di file terpisah
+  if (pageId === 'profil') {
+    window.location.href = 'profil.html'
+    return
+  }
+  if (pageId === 'pengaturan') {
+    window.location.href = 'pengaturan.html'
+    return
+  }
+  
+  // Navigasi internal di index.html
   document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'))
   const target = document.getElementById('page-'+pageId)
   if (target) target.classList.add('active')
@@ -439,7 +473,7 @@ function navigateTo(pageId) {
     document.getElementById('sidebar').classList.add('-translate-x-full')
     document.getElementById('overlay').classList.add('hidden')
   }
-  window.scrollTo({top:0,behavior:'smooth'})
+  window.scrollTo({top:0, behavior:'smooth'})
   renderPage(pageId)
 }
 
@@ -451,8 +485,6 @@ function renderPage(pageId) {
     disimpan: renderDisimpan,
     diskusi: renderDiskusi,
     analyst: renderAnalyst,
-    profil: renderProfil,
-    pengaturan: renderPengaturan,
   }
   if (map[pageId]) map[pageId]()
 }
@@ -465,7 +497,7 @@ function toggleSidebar() {
 }
 
 // ============================
-// RENDER FUNCTIONS (use caches)
+// RENDER FUNCTIONS
 // ============================
 
 const CAT_SVG = {
@@ -492,25 +524,29 @@ const CAT_GRADIENT = {
 function renderBeranda() {
   const cats = categoriesCache.length ? categoriesCache : []
   const iconGrid = document.getElementById('category-icons')
-  iconGrid.innerHTML = cats.map(c => {
-    const grad = CAT_GRADIENT[c.id] || 'from-zinc-700 to-zinc-900'
-    return `
-    <div onclick="navigateTo('kategori')"
-      class="cursor-pointer rounded-2xl bg-gradient-to-br ${grad} shadow-lg hover:scale-105 hover:shadow-xl active:scale-95 transition-all select-none overflow-hidden"
-      style="min-height:120px;">
-      <div class="flex flex-col items-center justify-center gap-3 w-full h-full p-4 text-white" style="min-height:120px;">
-        ${c.iconUrl ? `<img src="${c.iconUrl}" class="w-10 h-10 object-cover rounded-xl">` : (c.icon && c.icon.startsWith('fas') ? `<i class="${c.icon} text-3xl"></i>` : getCatSvg(c))}
-        <span class="text-sm font-bold tracking-wide drop-shadow">${c.name}</span>
-      </div>
-    </div>`
-  }).join('')
+  if (iconGrid) {
+    iconGrid.innerHTML = cats.map(c => {
+      const grad = CAT_GRADIENT[c.id] || 'from-zinc-700 to-zinc-900'
+      return `
+      <div onclick="navigateTo('kategori')"
+        class="cursor-pointer rounded-2xl bg-gradient-to-br ${grad} shadow-lg hover:scale-105 hover:shadow-xl active:scale-95 transition-all select-none overflow-hidden"
+        style="min-height:120px;">
+        <div class="flex flex-col items-center justify-center gap-3 w-full h-full p-4 text-white" style="min-height:120px;">
+          ${c.iconUrl ? `<img src="${c.iconUrl}" class="w-10 h-10 object-cover rounded-xl">` : (c.icon && c.icon.startsWith('fas') ? `<i class="${c.icon} text-3xl"></i>` : getCatSvg(c))}
+          <span class="text-sm font-bold tracking-wide drop-shadow">${c.name}</span>
+        </div>
+      </div>`
+    }).join('')
+  }
 
   const grid = document.getElementById('beranda-content-grid')
-  if (!contentsCache.length) {
-    grid.innerHTML = `<div class="col-span-6 text-center py-12 text-gray-400"><i class="fas fa-folder-open text-4xl mb-3 block text-gray-200"></i><p>Belum ada konten. Upload pertama Anda!</p></div>`
-    return
+  if (grid) {
+    if (!contentsCache.length) {
+      grid.innerHTML = `<div class="col-span-6 text-center py-12 text-gray-400"><i class="fas fa-folder-open text-4xl mb-3 block text-gray-200"></i><p>Belum ada konten. Upload pertama Anda!</p></div>`
+    } else {
+      grid.innerHTML = contentsCache.slice(0,6).map(c => contentCard(c)).join('')
+    }
   }
-  grid.innerHTML = contentsCache.slice(0,6).map(c => contentCard(c)).join('')
 }
 
 function contentCard(c) {
@@ -532,14 +568,14 @@ function contentCard(c) {
           </button>
         </div>
         <div class="content-desc-overlay">
-          <p>${c.description || 'Tidak ada deskripsi'}</p>
+          <p>${escapeHtml(c.description || 'Tidak ada deskripsi')}</p>
         </div>
       </div>
       <div class="content-info">
-        <h3 title="${c.title}">${c.title}</h3>
+        <h3 title="${c.title}">${escapeHtml(c.title)}</h3>
         <div class="flex items-center gap-1.5 mt-1">
           ${avatarEl(c.authorName, c.authorAvatar, 'w-4 h-4', 'rounded-full')}
-          <span class="text-xs text-gray-400 truncate">${c.authorName || 'Unknown'}</span>
+          <span class="text-xs text-gray-400 truncate">${escapeHtml(c.authorName || 'Unknown')}</span>
         </div>
         <p>${c.views} views · ${c.likes} suka</p>
       </div>
@@ -554,17 +590,19 @@ function renderKategori() {
 
   function renderPills(selected) {
     activeCat = selected
-    pills.innerHTML = `
-      <button onclick="filterKategori(null)" class="px-4 py-2 rounded-full text-sm font-bold border-2 transition ${!selected?'bg-black text-white border-black':'border-gray-300 text-gray-600 hover:border-black'}">
-        Semua
-      </button>
-      ${cats.map(c=>`
-        <button onclick="filterKategori('${c.id}')" class="px-4 py-2 rounded-full text-sm font-bold border-2 transition flex items-center gap-2 ${selected===c.id?'bg-black text-white border-black':'border-gray-300 text-gray-600 hover:border-black'}">
-          ${c.iconUrl ? `<img src="${c.iconUrl}" class="w-4 h-4 rounded">` : `<i class="${c.icon}"></i>`}
-          ${c.name}
+    if (pills) {
+      pills.innerHTML = `
+        <button onclick="filterKategori(null)" class="px-4 py-2 rounded-full text-sm font-bold border-2 transition ${!selected?'bg-black text-white border-black':'border-gray-300 text-gray-600 hover:border-black'}">
+          Semua
         </button>
-      `).join('')}
-    `
+        ${cats.map(c=>`
+          <button onclick="filterKategori('${c.id}')" class="px-4 py-2 rounded-full text-sm font-bold border-2 transition flex items-center gap-2 ${selected===c.id?'bg-black text-white border-black':'border-gray-300 text-gray-600 hover:border-black'}">
+            ${c.iconUrl ? `<img src="${c.iconUrl}" class="w-4 h-4 rounded">` : `<i class="${c.icon}"></i>`}
+            ${c.name}
+          </button>
+        `).join('')}
+      `
+    }
   }
 
   window.filterKategori = function(catId) {
@@ -572,13 +610,22 @@ function renderKategori() {
     const filteredContents = contentsCache.filter(c => !catId || c.categoryId === catId)
     const filteredLinks = linkwebsCache.filter(l => !catId || l.categoryId === catId)
     const label = catId ? cats.find(c=>c.id===catId)?.name : 'Semua'
-    document.getElementById('cat-result-label').textContent = label+' — Konten'
-    document.getElementById('kategori-content-grid').innerHTML = filteredContents.length
-      ? filteredContents.map(c=>contentCard(c)).join('')
-      : `<div class="col-span-4 text-gray-400 py-8 text-sm">Belum ada konten di kategori ini.</div>`
-    document.getElementById('kategori-links-grid').innerHTML = filteredLinks.length
-      ? `<p class="col-span-2 text-sm font-bold text-gray-500 uppercase tracking-wider mb-2">Link Web</p>`+filteredLinks.map(l=>linkCard(l)).join('')
-      : ''
+    const labelEl = document.getElementById('cat-result-label')
+    if (labelEl) labelEl.textContent = label+' — Konten'
+    
+    const contentGrid = document.getElementById('kategori-content-grid')
+    if (contentGrid) {
+      contentGrid.innerHTML = filteredContents.length
+        ? filteredContents.map(c=>contentCard(c)).join('')
+        : `<div class="col-span-4 text-gray-400 py-8 text-sm">Belum ada konten di kategori ini.</div>`
+    }
+    
+    const linksGrid = document.getElementById('kategori-links-grid')
+    if (linksGrid) {
+      linksGrid.innerHTML = filteredLinks.length
+        ? `<p class="col-span-2 text-sm font-bold text-gray-500 uppercase tracking-wider mb-2">Link Web</p>`+filteredLinks.map(l=>linkCard(l)).join('')
+        : ''
+    }
   }
 
   renderPills(null)
@@ -595,11 +642,11 @@ function linkCard(l) {
       </div>
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2 mb-0.5">
-          <p class="font-bold text-black text-sm truncate">${l.title}</p>
+          <p class="font-bold text-black text-sm truncate">${escapeHtml(l.title)}</p>
           <span class="badge ${statusBadge} flex-shrink-0">${statusLabel}</span>
         </div>
         <p class="text-xs text-gray-400 truncate">${l.url}</p>
-        ${l.description ? `<p class="text-xs text-gray-600 mt-1 line-clamp-1">${l.description}</p>` : ''}
+        ${l.description ? `<p class="text-xs text-gray-600 mt-1 line-clamp-1">${escapeHtml(l.description)}</p>` : ''}
       </div>
       <i class="fas fa-external-link-alt text-gray-300 text-sm flex-shrink-0"></i>
     </div>
@@ -609,6 +656,7 @@ function linkCard(l) {
 function renderTren() {
   const sorted = [...contentsCache].sort((a,b)=>b.views - a.views)
   const el = document.getElementById('tren-list')
+  if (!el) return
   if (!sorted.length) {
     el.innerHTML = `<div class="text-center py-16 text-gray-400"><i class="fas fa-chart-line text-5xl mb-3 block text-gray-200"></i><p>Belum ada konten trending.</p></div>`
     return
@@ -620,8 +668,8 @@ function renderTren() {
         ${c.thumbUrl ? `<img src="${c.thumbUrl}" class="w-full h-full object-cover">` : `<i class="fas fa-file text-gray-600"></i>`}
       </div>
       <div class="flex-1 min-w-0">
-        <p class="font-bold text-black truncate">${c.title}</p>
-        <p class="text-sm text-gray-500 mt-0.5">${c.description||''}</p>
+        <p class="font-bold text-black truncate">${escapeHtml(c.title)}</p>
+        <p class="text-sm text-gray-500 mt-0.5">${escapeHtml(c.description||'')}</p>
         <div class="flex gap-4 mt-2 text-xs text-gray-400">
           <span><i class="fas fa-eye mr-1"></i>${c.views}</span>
           <span><i class="fas fa-heart mr-1"></i>${c.likes}</span>
@@ -640,19 +688,30 @@ function renderDisimpan() {
   const grid = document.getElementById('disimpan-grid')
   const empty = document.getElementById('disimpan-empty')
   const all = [...savedContents, ...savedLinks]
-  if (!all.length) { grid.innerHTML=''; empty.classList.remove('hidden'); return; }
-  empty.classList.add('hidden')
-  grid.innerHTML = [
-    ...savedContents.map(c=>contentCard(c)),
-    ...savedLinks.map(l=>`<div class="col-span-1">${linkCard(l)}</div>`)
-  ].join('')
+  if (grid) {
+    if (!all.length) { 
+      grid.innerHTML=''; 
+      if (empty) empty.classList.remove('hidden'); 
+      return; 
+    }
+    if (empty) empty.classList.add('hidden')
+    grid.innerHTML = [
+      ...savedContents.map(c=>contentCard(c)),
+      ...savedLinks.map(l=>`<div class="col-span-1">${linkCard(l)}</div>`)
+    ].join('')
+  }
 }
 
 function renderDiskusi() {
   const list = document.getElementById('diskusi-list')
   const empty = document.getElementById('diskusi-empty')
-  if (!postsCache.length) { list.innerHTML=''; empty.classList.remove('hidden'); return; }
-  empty.classList.add('hidden')
+  if (!list) return
+  if (!postsCache.length) { 
+    list.innerHTML=''; 
+    if (empty) empty.classList.remove('hidden'); 
+    return; 
+  }
+  if (empty) empty.classList.add('hidden')
   list.innerHTML = postsCache.map(p => {
     const isOwner = CURRENT_USER && p.userId === CURRENT_USER.id
     return `
@@ -660,7 +719,7 @@ function renderDiskusi() {
       <div class="flex gap-4 mb-3">
         ${avatarEl(p.userName, p.userAvatar)}
         <div class="flex-1">
-          <p class="font-bold text-black">${p.userName}</p>
+          <p class="font-bold text-black">${escapeHtml(p.userName)}</p>
           <p class="text-xs text-gray-400">${timeAgo(p.createdAt)}</p>
         </div>
         ${isOwner ? `
@@ -678,7 +737,7 @@ function renderDiskusi() {
           </div>
         </div>` : ''}
       </div>
-      <p class="text-gray-700 mb-4 leading-relaxed text-sm pl-14" id="post-content-${p.id}">${p.content}</p>
+      <p class="text-gray-700 mb-4 leading-relaxed text-sm pl-14" id="post-content-${p.id}">${escapeHtml(p.content)}</p>
       <div class="flex gap-4 text-sm text-gray-500 pl-14">
         <button onclick="likePost('${p.id}')" class="flex items-center gap-1.5 hover:text-red-500 transition">
           <i class="fas fa-heart"></i><span>${p.likes}</span>
@@ -698,9 +757,10 @@ function renderDiskusi() {
 function renderAnalyst() {
   const list = document.getElementById('projects-list')
   const perfList = document.getElementById('perf-list')
+  if (!list) return
   if (!projectsCache.length) {
     list.innerHTML = `<p class="text-gray-400 text-sm py-4 text-center">Belum ada project. Tambah yang pertama!</p>`
-    perfList.innerHTML = ''
+    if (perfList) perfList.innerHTML = ''
   } else {
     list.innerHTML = projectsCache.map(p => {
       const s = {live:'badge-green',development:'badge-yellow',archived:'badge-blue'}[p.status]||'badge-blue'
@@ -709,12 +769,12 @@ function renderAnalyst() {
         <div class="border border-gray-200 rounded-xl p-4 hover:bg-gray-50 transition">
           <div class="flex items-start justify-between mb-1">
             <div>
-              <p class="font-bold text-black">${p.name}</p>
-              <p class="text-sm text-gray-500">${p.description}</p>
+              <p class="font-bold text-black">${escapeHtml(p.name)}</p>
+              <p class="text-sm text-gray-500">${escapeHtml(p.description)}</p>
             </div>
             <span class="badge ${s}">${sl}</span>
           </div>
-          <p class="text-xs text-gray-400 mb-3">${p.techStack||''}</p>
+          <p class="text-xs text-gray-400 mb-3">${escapeHtml(p.techStack||'')}</p>
           <div class="flex gap-2">
             ${p.deployUrl ? `<a href="${p.deployUrl}" target="_blank" class="text-xs bg-black text-white px-3 py-1.5 rounded-lg hover:bg-zinc-800 transition font-bold">Lihat</a>` : ''}
             <button onclick="deleteProject('${p.id}')" class="text-xs border border-red-200 text-red-500 px-3 py-1.5 rounded-lg hover:bg-red-50 transition font-bold">Hapus</button>
@@ -722,39 +782,44 @@ function renderAnalyst() {
         </div>
       `
     }).join('')
-    perfList.innerHTML = projectsCache.map(p => `
-      <div>
-        <div class="flex justify-between mb-1.5">
-          <p class="text-sm font-bold text-black">${p.name}</p>
-          <p class="text-sm font-bold text-black">${p.performanceScore}%</p>
+    if (perfList) {
+      perfList.innerHTML = projectsCache.map(p => `
+        <div>
+          <div class="flex justify-between mb-1.5">
+            <p class="text-sm font-bold text-black">${escapeHtml(p.name)}</p>
+            <p class="text-sm font-bold text-black">${p.performanceScore}%</p>
+          </div>
+          <div class="progress"><div class="progress-bar" style="width:${p.performanceScore}%"></div></div>
         </div>
-        <div class="progress"><div class="progress-bar" style="width:${p.performanceScore}%"></div></div>
-      </div>
-    `).join('')
+      `).join('')
+    }
   }
 
   const live = projectsCache.filter(p=>p.status==='live')
   const dev = projectsCache.filter(p=>p.status==='development')
-  document.getElementById('stat-total').textContent = projectsCache.length
-  document.getElementById('stat-live').textContent = live.length
-  document.getElementById('stat-dev').textContent = dev.length
-  document.getElementById('stat-visits').textContent = projectsCache.reduce((a,p)=>a+p.visitCount,0).toLocaleString()
+  const totalEl = document.getElementById('stat-total')
+  const liveEl = document.getElementById('stat-live')
+  const devEl = document.getElementById('stat-dev')
+  const visitsEl = document.getElementById('stat-visits')
+  const avgPerfEl = document.getElementById('stat-avgperf')
+  const uptimeEl = document.getElementById('stat-uptime')
+  
+  if (totalEl) totalEl.textContent = projectsCache.length
+  if (liveEl) liveEl.textContent = live.length
+  if (devEl) devEl.textContent = dev.length
+  if (visitsEl) visitsEl.textContent = projectsCache.reduce((a,p)=>a+p.visitCount,0).toLocaleString()
   const avgPerf = projectsCache.length ? Math.round(projectsCache.reduce((a,p)=>a+p.performanceScore,0)/projectsCache.length) : 0
   const avgUptime = live.length ? (live.reduce((a,p)=>a+p.uptimePercent,0)/live.length).toFixed(0)+'%' : '—'
-  document.getElementById('stat-avgperf').textContent = projectsCache.length ? avgPerf+'%' : '—'
-  document.getElementById('stat-uptime').textContent = avgUptime
+  if (avgPerfEl) avgPerfEl.textContent = projectsCache.length ? avgPerf+'%' : '—'
+  if (uptimeEl) uptimeEl.textContent = avgUptime
 }
 
 function renderProfil() {
-  // Guard: jika belum login, jangan render dan beri pesan
   if (!CURRENT_USER) {
-    console.log('renderProfil: User belum login');
-    
-    // Sembunyikan elemen yang membutuhkan auth atau tampilkan placeholder
-    const profilContainer = document.getElementById('page-profil');
+    console.log('renderProfil: User belum login')
+    const profilContainer = document.getElementById('page-profil')
     if (profilContainer) {
-      // Tampilkan pesan di grid konten
-      const kontenGrid = document.getElementById('profil-konten-grid');
+      const kontenGrid = document.getElementById('profil-konten-grid')
       if (kontenGrid) {
         kontenGrid.innerHTML = `
           <div class="col-span-full text-center py-20">
@@ -764,36 +829,30 @@ function renderProfil() {
               Login Sekarang
             </button>
           </div>
-        `;
+        `
       }
+      const diskusiPanel = document.getElementById('profil-panel-diskusi')
+      if (diskusiPanel) diskusiPanel.classList.add('hidden')
       
-      // Sembunyikan panel diskusi
-      const diskusiPanel = document.getElementById('profil-panel-diskusi');
-      if (diskusiPanel) diskusiPanel.classList.add('hidden');
-      
-      // Sembunyikan tombol upload/edit
-      const actionButtons = document.querySelectorAll('.flex.gap-2.flex-wrap button');
+      const actionButtons = document.querySelectorAll('.flex.gap-2.flex-wrap button')
       actionButtons.forEach(btn => {
         if (btn.textContent.includes('Upload') || btn.textContent.includes('Edit')) {
-          btn.style.display = 'none';
+          btn.style.display = 'none'
         }
-      });
+      })
     }
-    return;
+    return
   }
   
-  // Jika login, pastikan profile data tersedia
   if (!CURRENT_PROFILE) {
-    console.log('renderProfil: Menunggu profile data...');
-    // Tunggu sebentar lalu coba lagi
+    console.log('renderProfil: Menunggu profile data...')
     setTimeout(() => {
-      if (CURRENT_PROFILE) renderProfil();
-      else toast('⚠️ Gagal memuat data profil');
-    }, 500);
-    return;
+      if (CURRENT_PROFILE) renderProfil()
+      else toast('⚠️ Gagal memuat data profil')
+    }, 500)
+    return
   }
   
-  // Data profile (gunakan CURRENT_PROFILE langsung)
   const profile = {
     name: CURRENT_PROFILE.username || 'Pengguna',
     username: CURRENT_PROFILE.username || 'pengguna',
@@ -806,86 +865,79 @@ function renderProfil() {
     coverUrl: CURRENT_PROFILE.cover_url || '',
     followers: CURRENT_PROFILE.followers_count || 0,
     following: CURRENT_PROFILE.following_count || 0
-  };
+  }
   
-  // Filter konten milik user
-  const myContents = contentsCache.filter(c => c.userId === CURRENT_USER.id);
-  const myDiscussions = postsCache.filter(d => d.userId === CURRENT_USER.id);
+  const myContents = contentsCache.filter(c => c.userId === CURRENT_USER.id)
+  const myDiscussions = postsCache.filter(d => d.userId === CURRENT_USER.id)
   
-  // Update DOM dengan pengecekan element exist
-  const nameEl = document.getElementById('profil-name');
-  if (nameEl) nameEl.textContent = profile.name;
+  const nameEl = document.getElementById('profil-name')
+  if (nameEl) nameEl.textContent = profile.name
   
-  const usernameEl = document.getElementById('profil-username');
-  if (usernameEl) usernameEl.textContent = '@' + profile.username;
+  const usernameEl = document.getElementById('profil-username')
+  if (usernameEl) usernameEl.textContent = '@' + profile.username
   
-  const bioEl = document.getElementById('profil-bio');
-  if (bioEl) bioEl.textContent = profile.bio || 'Tidak ada bio';
+  const bioEl = document.getElementById('profil-bio')
+  if (bioEl) bioEl.textContent = profile.bio || 'Tidak ada bio'
   
-  const locationEl = document.getElementById('info-location');
-  if (locationEl) locationEl.textContent = profile.location || 'Tidak diisi';
+  const locationEl = document.getElementById('info-location')
+  if (locationEl) locationEl.textContent = profile.location || 'Tidak diisi'
   
-  const occupationEl = document.getElementById('info-occupation');
-  if (occupationEl) occupationEl.textContent = profile.occupation || 'Tidak diisi';
+  const occupationEl = document.getElementById('info-occupation')
+  if (occupationEl) occupationEl.textContent = profile.occupation || 'Tidak diisi'
   
-  const techStackEl = document.getElementById('info-techstack');
-  if (techStackEl) techStackEl.textContent = profile.techStack || 'Tidak diisi';
+  const techStackEl = document.getElementById('info-techstack')
+  if (techStackEl) techStackEl.textContent = profile.techStack || 'Tidak diisi'
   
-  const interestsEl = document.getElementById('info-interests');
-  if (interestsEl) interestsEl.textContent = profile.interests || 'Tidak diisi';
+  const interestsEl = document.getElementById('info-interests')
+  if (interestsEl) interestsEl.textContent = profile.interests || 'Tidak diisi'
   
-  // Avatar handling
-  const avatarImg = document.getElementById('avatar-img');
-  const avatarInitial = document.getElementById('avatar-initial');
+  const avatarImg = document.getElementById('avatar-img')
+  const avatarInitial = document.getElementById('avatar-initial')
   
   if (profile.avatarUrl && avatarImg && avatarInitial) {
-    avatarImg.src = profile.avatarUrl;
-    avatarImg.classList.remove('hidden');
-    avatarInitial.classList.add('hidden');
+    avatarImg.src = profile.avatarUrl
+    avatarImg.classList.remove('hidden')
+    avatarInitial.classList.add('hidden')
   } else if (avatarInitial) {
-    avatarInitial.textContent = (profile.name || 'U')[0].toUpperCase();
-    if (avatarImg) avatarImg.classList.add('hidden');
-    avatarInitial.classList.remove('hidden');
+    avatarInitial.textContent = (profile.name || 'U')[0].toUpperCase()
+    if (avatarImg) avatarImg.classList.add('hidden')
+    avatarInitial.classList.remove('hidden')
   }
   
-  // Cover image
-  const coverImg = document.getElementById('cover-img');
+  const coverImg = document.getElementById('cover-img')
   if (coverImg && profile.coverUrl) {
-    coverImg.src = profile.coverUrl;
-    coverImg.classList.remove('hidden');
+    coverImg.src = profile.coverUrl
+    coverImg.classList.remove('hidden')
   } else if (coverImg) {
-    coverImg.classList.add('hidden');
+    coverImg.classList.add('hidden')
   }
   
-  // Update statistik
-  const followersEl = document.getElementById('stat-followers');
-  if (followersEl) followersEl.textContent = profile.followers;
+  const followersEl = document.getElementById('stat-followers')
+  if (followersEl) followersEl.textContent = profile.followers
   
-  const followingEl = document.getElementById('stat-following');
-  if (followingEl) followingEl.textContent = profile.following;
+  const followingEl = document.getElementById('stat-following')
+  if (followingEl) followingEl.textContent = profile.following
   
-  const postsEl = document.getElementById('stat-posts');
-  if (postsEl) postsEl.textContent = myContents.length;
+  const postsEl = document.getElementById('stat-posts')
+  if (postsEl) postsEl.textContent = myContents.length
   
-  const likesEl = document.getElementById('stat-likes-total');
-  if (likesEl) likesEl.textContent = myContents.reduce((a,c) => a + (c.likes || 0), 0);
+  const likesEl = document.getElementById('stat-likes-total')
+  if (likesEl) likesEl.textContent = myContents.reduce((a,c) => a + (c.likes || 0), 0)
   
-  const commentsEl = document.getElementById('stat-comments');
-  if (commentsEl) commentsEl.textContent = myDiscussions.reduce((a,d) => a + (d.comments || 0), 0);
+  const commentsEl = document.getElementById('stat-comments')
+  if (commentsEl) commentsEl.textContent = myDiscussions.reduce((a,d) => a + (d.comments || 0), 0)
   
-  const sharesEl = document.getElementById('stat-shares');
-  if (sharesEl) sharesEl.textContent = myDiscussions.reduce((a,d) => a + (d.shares || 0), 0);
+  const sharesEl = document.getElementById('stat-shares')
+  if (sharesEl) sharesEl.textContent = myDiscussions.reduce((a,d) => a + (d.shares || 0), 0)
   
-  // Tampilkan tombol aksi
-  const actionButtons = document.querySelectorAll('.flex.gap-2.flex-wrap button');
+  const actionButtons = document.querySelectorAll('.flex.gap-2.flex-wrap button')
   actionButtons.forEach(btn => {
-    btn.style.display = 'inline-flex';
-  });
+    btn.style.display = 'inline-flex'
+  })
   
-  // Render komponen turunan
-  renderRecentUploads();
-  renderProfilKonten();
-  renderProfilDiskusi();
+  renderRecentUploads()
+  renderProfilKonten()
+  renderProfilDiskusi()
 }
 
 function renderProfilKonten() {
@@ -931,8 +983,8 @@ function renderProfilKonten() {
           </div>
         </div>
         <div class="p-3">
-          <h3 class="font-bold text-black text-sm truncate mb-1" title="${c.title}">${c.title}</h3>
-          <p class="text-xs text-gray-400 truncate mb-2">${c.description || 'Tidak ada deskripsi'}</p>
+          <h3 class="font-bold text-black text-sm truncate mb-1" title="${escapeHtml(c.title)}">${escapeHtml(c.title)}</h3>
+          <p class="text-xs text-gray-400 truncate mb-2">${escapeHtml(c.description || 'Tidak ada deskripsi')}</p>
           <div class="flex items-center justify-between text-xs text-gray-400">
             <span><i class="fas fa-eye mr-1"></i>${c.views}</span>
             <span><i class="fas fa-heart mr-1 text-red-400"></i>${c.likes}</span>
@@ -952,11 +1004,11 @@ function renderProfilDiskusi() {
     return
   }
   actEl.innerHTML = myDiscussions.map(d => `
-    <div class="post-item" id="post-${d.id}">
+    <div class="post-item border-b border-gray-100 last:border-0 py-5" id="post-${d.id}">
       <div class="flex gap-4 mb-3">
         ${avatarEl(d.userName, d.userAvatar)}
         <div class="flex-1">
-          <p class="font-bold text-black">${d.userName}</p>
+          <p class="font-bold text-black">${escapeHtml(d.userName)}</p>
           <p class="text-xs text-gray-400">${timeAgo(d.createdAt)}</p>
         </div>
         <div class="relative" id="menu-wrap-${d.id}">
@@ -973,7 +1025,7 @@ function renderProfilDiskusi() {
           </div>
         </div>
       </div>
-      <p class="text-gray-700 mb-3 leading-relaxed text-sm pl-14" id="post-content-${d.id}">${d.content}</p>
+      <p class="text-gray-700 mb-3 leading-relaxed text-sm pl-14" id="post-content-${d.id}">${escapeHtml(d.content)}</p>
       <div class="flex gap-4 text-sm text-gray-500 pl-14">
         <span><i class="fas fa-heart mr-1"></i>${d.likes}</span>
         <span><i class="fas fa-comment mr-1"></i>${d.comments}</span>
@@ -989,36 +1041,54 @@ function switchProfilTab(tab) {
   const kontenBtn = document.getElementById('profil-tab-konten')
   const diskusiBtn = document.getElementById('profil-tab-diskusi')
   if (tab === 'konten') {
-    kontenPanel.classList.remove('hidden')
-    diskusiPanel.classList.add('hidden')
-    kontenBtn.classList.add('text-black', 'border-black')
-    kontenBtn.classList.remove('text-gray-400', 'border-transparent')
-    diskusiBtn.classList.remove('text-black', 'border-black')
-    diskusiBtn.classList.add('text-gray-400', 'border-transparent')
+    if (kontenPanel) kontenPanel.classList.remove('hidden')
+    if (diskusiPanel) diskusiPanel.classList.add('hidden')
+    if (kontenBtn) {
+      kontenBtn.classList.add('text-black', 'border-black')
+      kontenBtn.classList.remove('text-gray-400', 'border-transparent')
+    }
+    if (diskusiBtn) {
+      diskusiBtn.classList.remove('text-black', 'border-black')
+      diskusiBtn.classList.add('text-gray-400', 'border-transparent')
+    }
   } else {
-    diskusiPanel.classList.remove('hidden')
-    kontenPanel.classList.add('hidden')
-    diskusiBtn.classList.add('text-black', 'border-black')
-    diskusiBtn.classList.remove('text-gray-400', 'border-transparent')
-    kontenBtn.classList.remove('text-black', 'border-black')
-    kontenBtn.classList.add('text-gray-400', 'border-transparent')
+    if (diskusiPanel) diskusiPanel.classList.remove('hidden')
+    if (kontenPanel) kontenPanel.classList.add('hidden')
+    if (diskusiBtn) {
+      diskusiBtn.classList.add('text-black', 'border-black')
+      diskusiBtn.classList.remove('text-gray-400', 'border-transparent')
+    }
+    if (kontenBtn) {
+      kontenBtn.classList.remove('text-black', 'border-black')
+      kontenBtn.classList.add('text-gray-400', 'border-transparent')
+    }
   }
 }
 
 function renderRecentUploads() {
+  const el = document.getElementById('recent-uploads')
+  if (!el) return
+  
+  if (!CURRENT_USER) {
+    el.innerHTML = `<p class="text-xs text-gray-400">Login untuk melihat upload terbaru</p>`
+    return
+  }
+  
   const recentContents = contentsCache.slice(0,3)
   const recentLinks = linkwebsCache.slice(0,2)
-  const el = document.getElementById('recent-uploads')
   const fileIconsMap = {image:'fas fa-file-image text-orange-400',video:'fas fa-file-video text-purple-400',pdf:'fas fa-file-pdf text-red-400',doc:'fas fa-file-word text-blue-400'}
   const all = [
-    ...recentContents.map(c=>({icon:fileIconsMap[c.fileType]||'fas fa-file text-gray-400',name:c.title,size:c.fileType?.toUpperCase()||'FILE',type:'content'})),
-    ...recentLinks.map(l=>({icon:'fas fa-link text-green-500',name:l.title,size:'LINK',type:'link'})),
+    ...recentContents.map(c=>({icon:fileIconsMap[c.fileType]||'fas fa-file text-gray-400',name:c.title,size:c.fileType?.toUpperCase()||'FILE'})),
+    ...recentLinks.map(l=>({icon:'fas fa-link text-green-500',name:l.title,size:'LINK'})),
   ].slice(0,4)
-  if (!all.length) { el.innerHTML = `<p class="text-xs text-gray-400">Belum ada upload</p>`; return; }
+  if (!all.length) { 
+    el.innerHTML = `<p class="text-xs text-gray-400">Belum ada upload</p>`
+        return
+  }
   el.innerHTML = all.map(f=>`
-    <div class="flex items-center gap-2 p-2 hover:bg-gray-50 rounded-lg">
+    <div class="flex items-center gap-2 p-2 hover:bg-gray-50 rounded-lg transition">
       <i class="${f.icon} w-5 text-center"></i>
-      <p class="text-xs text-gray-700 flex-1 truncate">${f.name}</p>
+      <p class="text-xs text-gray-700 flex-1 truncate font-medium">${escapeHtml(f.name)}</p>
       <span class="text-xs text-gray-400 flex-shrink-0">${f.size}</span>
     </div>
   `).join('')
@@ -1026,6 +1096,21 @@ function renderRecentUploads() {
 
 function renderPengaturan() {
   const dbStats = document.getElementById('db-stats')
+  if (!dbStats) return
+  
+  if (!CURRENT_USER) {
+    dbStats.innerHTML = `
+      <div class="col-span-full text-center py-12">
+        <i class="fas fa-lock text-5xl text-gray-300 mb-4 block"></i>
+        <p class="text-gray-500 font-medium">Silakan login untuk melihat statistik</p>
+        <button onclick="openAuthModal()" class="mt-4 bg-black text-white px-6 py-2.5 rounded-xl font-bold hover:bg-zinc-800 transition">
+          Login Sekarang
+        </button>
+      </div>
+    `
+    return
+  }
+  
   dbStats.innerHTML = [
     ['Konten Upload', contentsCache.length, 'fas fa-file-alt text-blue-500'],
     ['Link Web', linkwebsCache.length, 'fas fa-link text-green-500'],
@@ -1035,27 +1120,28 @@ function renderPengaturan() {
   ].map(([label,count,icon])=>`
     <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
       <div class="flex items-center gap-3">
-        <i class="${icon}"></i>
-        <span class="text-sm font-bold">${label}</span>
+        <i class="${icon} w-5 text-center"></i>
+        <span class="text-sm font-bold text-gray-700">${label}</span>
       </div>
-      <span class="font-bold text-black">${count}</span>
+      <span class="font-bold text-black text-lg">${count}</span>
     </div>
   `).join('')
 }
 
 // ============================
-// ACTIONS (direct to Supabase, then reload)
+// ACTIONS (direct to Supabase)
 // ============================
 
 async function toggleBookmark(contentId) {
   if (!CURRENT_USER) { openAuthModal(); toast('⚠️ Login dulu untuk menyimpan konten'); return }
   const saved = await window._SB.toggleSave(CURRENT_USER.id, contentId, 'content')
-  await loadSaves()   // refresh savesCache and update bookmarked flags
+  await loadSaves()
   renderPage(getCurrentPage())
   toast(saved ? '🔖 Disimpan ke koleksi' : 'Dihapus dari koleksi')
 }
 
 async function likePost(postId) {
+  if (!CURRENT_USER) { openAuthModal(); toast('⚠️ Login dulu untuk like'); return }
   try {
     await window._SB.likePost(postId, CURRENT_USER.id)
     await loadPosts()
@@ -1063,7 +1149,9 @@ async function likePost(postId) {
   } catch(e) { console.warn(e) }
 }
 
+// ============================
 // POST EDIT / DELETE
+// ============================
 
 function togglePostMenu(postId) {
   const menu = document.getElementById('post-menu-' + postId)
@@ -1142,7 +1230,9 @@ async function deletePost(postId) {
   toast('🗑️ Postingan dihapus')
 }
 
+// ============================
 // KONTEN EDIT / DELETE
+// ============================
 
 function toggleContentMenu(contentId) {
   const menu = document.getElementById('content-menu-' + contentId)
@@ -1203,13 +1293,14 @@ async function deleteKonten(contentId) {
   toast('🗑️ Konten dihapus')
 }
 
+// ============================
 // SHOW CONTENT DETAIL
+// ============================
 
 async function showContentDetail(id) {
   const c = contentsCache.find(c => c.id === id)
   if (!c) return
 
-  // increment views
   await window._SB.incrementViews(id)
   await loadContents()
 
@@ -1230,12 +1321,12 @@ async function showContentDetail(id) {
   const avgRating = ratings.length ? (ratings.reduce((a,b) => a + b.score, 0) / ratings.length).toFixed(1) : null
 
   const fileMetaExtra = updated.fileName
-    ? `<div class="bg-gray-50 rounded-xl p-3"><p class="text-xs text-gray-400 mb-0.5">Nama File</p><p class="text-sm font-semibold text-black truncate">${updated.fileName}</p></div>
+    ? `<div class="bg-gray-50 rounded-xl p-3"><p class="text-xs text-gray-400 mb-0.5">Nama File</p><p class="text-sm font-semibold text-black truncate">${escapeHtml(updated.fileName)}</p></div>
        <div class="bg-gray-50 rounded-xl p-3"><p class="text-xs text-gray-400 mb-0.5">Ukuran</p><p class="text-sm font-semibold text-black">${updated.fileSize ? formatSize(updated.fileSize) : '-'}</p></div>`
     : ''
 
   const webUrlBlock = updated.webUrl
-    ? `<a href="${updated.webUrl}" target="_blank" rel="noopener" class="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 mb-4 text-sm text-blue-700 hover:bg-blue-100 transition"><i class="fas fa-external-link-alt"></i><span class="truncate flex-1">${updated.webUrl}</span><span class="text-xs font-semibold flex-shrink-0">Buka →</span></a>`
+    ? `<a href="${updated.webUrl}" target="_blank" rel="noopener" class="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 mb-4 text-sm text-blue-700 hover:bg-blue-100 transition"><i class="fas fa-external-link-alt"></i><span class="truncate flex-1">${escapeHtml(updated.webUrl)}</span><span class="text-xs font-semibold flex-shrink-0">Buka →</span></a>`
     : ''
 
   const pdfOpenBtn = updated.fileType === 'pdf'
@@ -1243,7 +1334,7 @@ async function showContentDetail(id) {
     : ''
 
   const pdfViewerBlock = updated.fileType === 'pdf' && updated.fileData
-    ? `<div id="pdf-viewer-${updated.id}" class="hidden mb-6"><div class="flex items-center justify-between mb-2"><span class="text-sm font-semibold text-black">Preview PDF</span><button onclick="togglePdfViewer('${updated.id}')" class="text-xs text-gray-400 hover:text-black"><i class="fas fa-times"></i> Tutup</button></div><iframe src="${updated.fileData}" class="w-full rounded-2xl border border-gray-200" style="height:70vh;" title="${updated.title}"></iframe></div>`
+    ? `<div id="pdf-viewer-${updated.id}" class="hidden mb-6"><div class="flex items-center justify-between mb-2"><span class="text-sm font-semibold text-black">Preview PDF</span><button onclick="togglePdfViewer('${updated.id}')" class="text-xs text-gray-400 hover:text-black"><i class="fas fa-times"></i> Tutup</button></div><iframe src="${updated.fileData}" class="w-full rounded-2xl border border-gray-200" style="height:70vh;" title="${escapeHtml(updated.title)}"></iframe></div>`
     : ''
 
   const fileActionsBlock = updated.fileData
@@ -1259,14 +1350,14 @@ async function showContentDetail(id) {
   const commentsHtml = comments.length
     ? comments.map(cm => `
         <div class="flex gap-3 py-4 border-b border-gray-100 last:border-0">
-          <div class="w-9 h-9 rounded-full bg-black flex items-center justify-center text-white text-xs font-bold flex-shrink-0">${cm.author.charAt(0).toUpperCase()}</div>
+          <div class="w-9 h-9 rounded-full bg-black flex items-center justify-center text-white text-xs font-bold flex-shrink-0">${escapeHtml(cm.author.charAt(0).toUpperCase())}</div>
           <div class="flex-1">
             <div class="flex items-center gap-2 mb-1">
-              <span class="text-sm font-semibold text-black">${cm.author}</span>
+              <span class="text-sm font-semibold text-black">${escapeHtml(cm.author)}</span>
               <div class="flex">${stars(cm.rating)}</div>
               <span class="text-xs text-gray-400 ml-auto">${new Date(cm.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
             </div>
-            <p class="text-sm text-gray-600 leading-relaxed">${cm.text}</p>
+            <p class="text-sm text-gray-600 leading-relaxed">${escapeHtml(cm.text)}</p>
           </div>
         </div>`).join('')
     : `<div class="text-center py-10 text-gray-400"><i class="far fa-comment-dots text-3xl mb-2 block"></i><p class="text-sm">Belum ada komentar. Jadilah yang pertama!</p></div>`
@@ -1285,13 +1376,13 @@ async function showContentDetail(id) {
           <div class="w-full aspect-[3/2] rounded-2xl overflow-hidden bg-zinc-900 flex items-center justify-center mb-5 relative">
             ${updated.thumbUrl ? `<img src="${updated.thumbUrl}" class="w-full h-full object-cover">` : `<i class="${fileIcon} text-6xl text-white opacity-30"></i>`}
             <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-            <div class="absolute bottom-4 left-4 right-4"><h2 class="text-white text-xl font-bold leading-tight drop-shadow">${updated.title}</h2></div>
+            <div class="absolute bottom-4 left-4 right-4"><h2 class="text-white text-xl font-bold leading-tight drop-shadow">${escapeHtml(updated.title)}</h2></div>
           </div>
           <div class="flex items-center gap-3 mb-4">
             ${avgRating ? `<div class="flex items-center gap-1.5"><span class="text-2xl font-bold text-black">${avgRating}</span><div class="flex flex-col gap-0.5"><div class="flex">${stars(avgRating)}</div><span class="text-xs text-gray-400">${ratings.length} ulasan</span></div></div>` : `<span class="text-sm text-gray-400 italic">Belum ada penilaian</span>`}
             <div class="ml-auto flex items-center gap-3 text-sm text-gray-500"><span><i class="fas fa-eye mr-1 text-gray-400"></i>${updated.views}</span><span><i class="fas fa-heart mr-1 text-red-400"></i>${updated.likes}</span></div>
           </div>
-          <div class="mb-6"><h3 class="text-sm font-semibold text-black mb-2">Tentang Konten</h3><p class="text-sm text-gray-600 leading-relaxed">${updated.description || 'Tidak ada deskripsi tersedia.'}</p></div>
+          <div class="mb-6"><h3 class="text-sm font-semibold text-black mb-2">Tentang Konten</h3><p class="text-sm text-gray-600 leading-relaxed">${escapeHtml(updated.description || 'Tidak ada deskripsi tersedia.')}</p></div>
           <div class="grid grid-cols-2 gap-3 mb-4">
             <div class="bg-gray-50 rounded-xl p-3"><p class="text-xs text-gray-400 mb-0.5">Tipe File</p><p class="text-sm font-semibold text-black uppercase">${updated.fileType || '-'}</p></div>
             <div class="bg-gray-50 rounded-xl p-3"><p class="text-xs text-gray-400 mb-0.5">Diunggah</p><p class="text-sm font-semibold text-black">${new Date(updated.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</p></div>
@@ -1385,56 +1476,79 @@ function handleSearch(q) {
 // UPLOAD KONTEN & LINK
 // ============================
 function setUploadTab(tab) {
-  document.getElementById('tab-konten').classList.toggle('active', tab === 'konten')
-  document.getElementById('tab-linkweb').classList.toggle('active', tab === 'linkweb')
-  document.getElementById('upload-konten-panel').classList.toggle('hidden', tab !== 'konten')
-  document.getElementById('upload-linkweb-panel').classList.toggle('hidden', tab !== 'linkweb')
+  const kontenBtn = document.getElementById('tab-konten')
+  const linkwebBtn = document.getElementById('tab-linkweb')
+  const kontenPanel = document.getElementById('upload-konten-panel')
+  const linkwebPanel = document.getElementById('upload-linkweb-panel')
+  if (kontenBtn) kontenBtn.classList.toggle('active', tab === 'konten')
+  if (linkwebBtn) linkwebBtn.classList.toggle('active', tab === 'linkweb')
+  if (kontenPanel) kontenPanel.classList.toggle('hidden', tab !== 'konten')
+  if (linkwebPanel) linkwebPanel.classList.toggle('hidden', tab !== 'linkweb')
 }
 
 function handleMiniFile(input) {
   if (!input.files[0]) return
   tempFiles.main = input.files[0]
   const el = document.getElementById('mini-file-preview')
-  el.classList.remove('hidden')
-  document.getElementById('mini-file-name').textContent = input.files[0].name
-  document.getElementById('mini-file-size').textContent = formatSize(input.files[0].size)
+  if (el) el.classList.remove('hidden')
+  const nameEl = document.getElementById('mini-file-name')
+  const sizeEl = document.getElementById('mini-file-size')
+  if (nameEl) nameEl.textContent = input.files[0].name
+  if (sizeEl) sizeEl.textContent = formatSize(input.files[0].size)
 }
 
 function handleMiniDrop(e) {
   e.preventDefault()
   e.currentTarget.classList.remove('hover')
   const f = e.dataTransfer.files[0]
-  if (f) { tempFiles.main = f; document.getElementById('mini-file').files = e.dataTransfer.files; handleMiniFile({files:[f]}) }
+  if (f) { 
+    tempFiles.main = f
+    const fileInput = document.getElementById('mini-file')
+    if (fileInput) fileInput.files = e.dataTransfer.files
+    handleMiniFile({files:[f]})
+  }
 }
 
 function clearMiniFile() {
   tempFiles.main = null
-  document.getElementById('mini-file-preview').classList.add('hidden')
-  document.getElementById('mini-file').value = ''
+  const preview = document.getElementById('mini-file-preview')
+  const fileInput = document.getElementById('mini-file')
+  if (preview) preview.classList.add('hidden')
+  if (fileInput) fileInput.value = ''
 }
 
 function handleMainFile(input) {
   if (!input.files[0]) return
   tempFiles.main = input.files[0]
-  document.getElementById('main-file-info').classList.remove('hidden')
-  document.getElementById('main-file-name').textContent = input.files[0].name
-  document.getElementById('main-file-size').textContent = formatSize(input.files[0].size)
+  const info = document.getElementById('main-file-info')
+  if (info) info.classList.remove('hidden')
+  const nameEl = document.getElementById('main-file-name')
+  const sizeEl = document.getElementById('main-file-size')
+  if (nameEl) nameEl.textContent = input.files[0].name
+  if (sizeEl) sizeEl.textContent = formatSize(input.files[0].size)
   const ext = input.files[0].name.split('.').pop().toLowerCase()
   const icons = {png:'fas fa-file-image text-orange-400',jpg:'fas fa-file-image text-orange-400',jpeg:'fas fa-file-image text-orange-400',gif:'fas fa-file-image text-orange-400',webp:'fas fa-file-image text-orange-400',mp4:'fas fa-file-video text-purple-400',pdf:'fas fa-file-pdf text-red-400',doc:'fas fa-file-word text-blue-400',docx:'fas fa-file-word text-blue-400'}
-  document.getElementById('main-file-icon').className = icons[ext] || 'fas fa-file text-gray-400'
-  document.getElementById('main-file-icon').className += ' text-xl'
+  const iconEl = document.getElementById('main-file-icon')
+  if (iconEl) {
+    iconEl.className = icons[ext] || 'fas fa-file text-gray-400'
+    iconEl.className += ' text-xl'
+  }
 }
 
 function handleMainDrop(e) {
   e.preventDefault()
   e.currentTarget.classList.remove('hover')
   const f = e.dataTransfer.files[0]
-  if (f) { tempFiles.main = f; handleMainFile({files:[f]}) }
+  if (f) { 
+    tempFiles.main = f
+    handleMainFile({files:[f]})
+  }
 }
 
 function clearMainFile() {
   tempFiles.main = null
-  document.getElementById('main-file-info').classList.add('hidden')
+  const info = document.getElementById('main-file-info')
+  if (info) info.classList.add('hidden')
 }
 
 function handleThumbFile(input) {
@@ -1443,9 +1557,13 @@ function handleThumbFile(input) {
   const reader = new FileReader()
   reader.onload = e => {
     tempFiles.thumb = e.target.result
-    document.getElementById('thumb-preview').src = e.target.result
-    document.getElementById('thumb-preview').classList.remove('hidden')
-    document.getElementById('thumb-icon-placeholder').classList.add('hidden')
+    const preview = document.getElementById('thumb-preview')
+    const placeholder = document.getElementById('thumb-icon-placeholder')
+    if (preview) {
+      preview.src = e.target.result
+      preview.classList.remove('hidden')
+    }
+    if (placeholder) placeholder.classList.add('hidden')
   }
   reader.readAsDataURL(input.files[0])
 }
@@ -1455,14 +1573,20 @@ function handleLinkIcon(input) {
   tempFiles.linkIcon = input.files[0]
   const reader = new FileReader()
   reader.onload = e => {
-    document.getElementById('lk-icon-preview').src = e.target.result
-    document.getElementById('lk-icon-preview').classList.remove('hidden')
-    document.getElementById('lk-icon-placeholder').classList.add('hidden')
+    const preview = document.getElementById('lk-icon-preview')
+    const placeholder = document.getElementById('lk-icon-placeholder')
+    if (preview) {
+      preview.src = e.target.result
+      preview.classList.remove('hidden')
+    }
+    if (placeholder) placeholder.classList.add('hidden')
   }
   reader.readAsDataURL(input.files[0])
 }
 
 async function submitUpload() {
+  if (!CURRENT_USER) { openAuthModal(); toast('⚠️ Login dulu untuk upload'); return }
+  
   const title = document.getElementById('up-title').value.trim()
   const catId = document.getElementById('up-category').value
   const desc = document.getElementById('up-desc').value.trim()
@@ -1501,6 +1625,8 @@ async function submitUpload() {
 }
 
 async function submitLink() {
+  if (!CURRENT_USER) { openAuthModal(); toast('⚠️ Login dulu untuk tambah link'); return }
+  
   const title = document.getElementById('lk-title').value.trim()
   const url = document.getElementById('lk-url').value.trim()
   if (!title || !url) { toast('⚠️ Judul dan URL wajib diisi!'); return }
@@ -1531,6 +1657,8 @@ async function submitLink() {
 }
 
 async function submitPost() {
+  if (!CURRENT_USER) { openAuthModal(); toast('⚠️ Login dulu untuk posting'); return }
+  
   const content = document.getElementById('post-content').value.trim()
   if (!content) { toast('⚠️ Tulis sesuatu dulu!'); return }
   await window._SB.addPost(CURRENT_USER.id, content)
@@ -1542,6 +1670,8 @@ async function submitPost() {
 }
 
 async function submitProject() {
+  if (!CURRENT_USER) { openAuthModal(); toast('⚠️ Login dulu untuk tambah project'); return }
+  
   const name = document.getElementById('proj-name').value.trim()
   if (!name) { toast('⚠️ Nama project wajib diisi!'); return }
   const newProj = {
@@ -1558,7 +1688,10 @@ async function submitProject() {
   }
   await window._SB.addProject(CURRENT_USER.id, newProj)
   await loadProjects()
-  ;['proj-name', 'proj-desc', 'proj-url', 'proj-tech', 'proj-perf', 'proj-uptime'].forEach(id => document.getElementById(id).value = '')
+  ;['proj-name', 'proj-desc', 'proj-url', 'proj-tech', 'proj-perf', 'proj-uptime'].forEach(id => {
+    const el = document.getElementById(id)
+    if (el) el.value = ''
+  })
   toast('✅ Project berhasil ditambahkan!')
   closeModal('modal-project')
   renderAnalyst()
@@ -1573,6 +1706,8 @@ async function deleteProject(id) {
 }
 
 async function saveEditProfil() {
+  if (!CURRENT_USER) { openAuthModal(); toast('⚠️ Login dulu'); return }
+  
   const updates = {
     username: document.getElementById('ep-username').value.trim() || CURRENT_PROFILE.username,
     bio: document.getElementById('ep-bio').value.trim(),
@@ -1588,7 +1723,7 @@ async function saveEditProfil() {
 }
 
 async function uploadAvatar(input) {
-  if (!input.files[0]) return
+  if (!input.files[0] || !CURRENT_USER) return
   toast('⏳ Mengupload foto...')
   const url = await window._SB.uploadAvatarFile(CURRENT_USER.id, input.files[0])
   await window._SB.updateProfile(CURRENT_USER.id, { avatar_url: url })
@@ -1598,7 +1733,7 @@ async function uploadAvatar(input) {
 }
 
 async function uploadCover(input) {
-  if (!input.files[0]) return
+  if (!input.files[0] || !CURRENT_USER) return
   toast('⏳ Mengupload cover...')
   const url = await window._SB.uploadCoverFile(CURRENT_USER.id, input.files[0])
   await window._SB.updateProfile(CURRENT_USER.id, { cover_url: url })
@@ -1609,8 +1744,6 @@ async function uploadCover(input) {
 
 function clearAllData() {
   if (!confirm('Yakin hapus semua data? Ini tidak bisa dibatalkan.')) return
-  // Hanya bersihkan localStorage untuk keperluan lain (jika ada), tapi data utama di Supabase tidak dihapus
-  // Karena tidak pakai localStorage untuk data utama, fungsi ini bisa dihapus atau diberi peringatan
   toast('🗑️ Fitur ini tidak tersedia karena data tersimpan di cloud.')
 }
 
@@ -1628,8 +1761,10 @@ function openLinkModal() {
   if (!CURRENT_USER) { openAuthModal(); toast('⚠️ Login dulu untuk menambah link'); return }
   populateCategorySelects()
   tempFiles = { main: null, thumb: null, thumbFile: null, linkIcon: null }
-  document.getElementById('lk-icon-preview').classList.add('hidden')
-  document.getElementById('lk-icon-placeholder').classList.remove('hidden')
+  const preview = document.getElementById('lk-icon-preview')
+  const placeholder = document.getElementById('lk-icon-placeholder')
+  if (preview) preview.classList.add('hidden')
+  if (placeholder) placeholder.classList.remove('hidden')
   openModal('modal-link')
 }
 
@@ -1644,7 +1779,10 @@ function openPostModal() {
 }
 
 function openProjectModal() { openModal('modal-project') }
+
 function openEditProfil() {
+  if (!CURRENT_USER) { openAuthModal(); toast('⚠️ Login dulu'); return }
+  
   const profile = {
     name: CURRENT_PROFILE?.username || '',
     username: CURRENT_PROFILE?.username || '',
@@ -1654,22 +1792,46 @@ function openEditProfil() {
     techStack: CURRENT_PROFILE?.tech_stack || '',
     interests: CURRENT_PROFILE?.interests || ''
   }
-  document.getElementById('ep-name').value = profile.name
-  document.getElementById('ep-username').value = profile.username
-  document.getElementById('ep-bio').value = profile.bio
-  document.getElementById('ep-location').value = profile.location
-  document.getElementById('ep-occupation').value = profile.occupation
-  document.getElementById('ep-techstack').value = profile.techStack
-  document.getElementById('ep-interests').value = profile.interests
+  const nameEl = document.getElementById('ep-name')
+  const usernameEl = document.getElementById('ep-username')
+  const bioEl = document.getElementById('ep-bio')
+  const locationEl = document.getElementById('ep-location')
+  const occupationEl = document.getElementById('ep-occupation')
+  const techStackEl = document.getElementById('ep-techstack')
+  const interestsEl = document.getElementById('ep-interests')
+  
+  if (nameEl) nameEl.value = profile.name
+  if (usernameEl) usernameEl.value = profile.username
+  if (bioEl) bioEl.value = profile.bio
+  if (locationEl) locationEl.value = profile.location
+  if (occupationEl) occupationEl.value = profile.occupation
+  if (techStackEl) techStackEl.value = profile.techStack
+  if (interestsEl) interestsEl.value = profile.interests
   openModal('modal-editprofil')
 }
 
-function openModal(id) { document.getElementById(id).classList.add('open'); document.body.style.overflow = 'hidden' }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); document.body.style.overflow = '' }
-function closeModalBackdrop(e, id) { if (e.target.id === id) closeModal(id) }
+function openModal(id) { 
+  const modal = document.getElementById(id)
+  if (modal) {
+    modal.classList.add('open')
+    document.body.style.overflow = 'hidden'
+  }
+}
+
+function closeModal(id) { 
+  const modal = document.getElementById(id)
+  if (modal) {
+    modal.classList.remove('open')
+    document.body.style.overflow = ''
+  }
+}
+
+function closeModalBackdrop(e, id) { 
+  if (e.target.id === id) closeModal(id) 
+}
 
 function populateCategorySelects() {
-  const opts = categoriesCache.map(c => `<option value="${c.id}">${c.name}</option>`).join('')
+  const opts = categoriesCache.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('')
   ;['up-category', 'lk-category', 'edit-konten-category'].forEach(id => {
     const el = document.getElementById(id)
     if (el) el.innerHTML = '<option value="">Pilih kategori...</option>' + opts
@@ -1677,18 +1839,28 @@ function populateCategorySelects() {
 }
 
 function resetUploadForm() {
-  ;['up-title', 'up-desc', 'up-url'].forEach(id => document.getElementById(id).value = '')
+  ;['up-title', 'up-desc', 'up-url'].forEach(id => {
+    const el = document.getElementById(id)
+    if (el) el.value = ''
+  })
   clearMainFile()
   tempFiles = { main: null, thumb: null, thumbFile: null, linkIcon: null }
-  document.getElementById('thumb-preview').classList.add('hidden')
-  document.getElementById('thumb-icon-placeholder').classList.remove('hidden')
+  const thumbPreview = document.getElementById('thumb-preview')
+  const thumbPlaceholder = document.getElementById('thumb-icon-placeholder')
+  if (thumbPreview) thumbPreview.classList.add('hidden')
+  if (thumbPlaceholder) thumbPlaceholder.classList.remove('hidden')
 }
 
 function resetLinkForm() {
-  ;['lk-title', 'lk-url', 'lk-desc'].forEach(id => document.getElementById(id).value = '')
+  ;['lk-title', 'lk-url', 'lk-desc'].forEach(id => {
+    const el = document.getElementById(id)
+    if (el) el.value = ''
+  })
   tempFiles.linkIcon = null
-  document.getElementById('lk-icon-preview').classList.add('hidden')
-  document.getElementById('lk-icon-placeholder').classList.remove('hidden')
+  const preview = document.getElementById('lk-icon-preview')
+  const placeholder = document.getElementById('lk-icon-placeholder')
+  if (preview) preview.classList.add('hidden')
+  if (placeholder) placeholder.classList.remove('hidden')
 }
 
 // ============================
@@ -1696,6 +1868,7 @@ function resetLinkForm() {
 // ============================
 function toast(msg, duration = 2800) {
   const el = document.getElementById('toast')
+  if (!el) return
   el.textContent = msg
   el.classList.add('show')
   setTimeout(() => el.classList.remove('show'), duration)
@@ -1705,6 +1878,13 @@ function formatSize(bytes) {
   if (bytes < 1024) return bytes + 'B'
   if (bytes < 1048576) return (bytes / 1024).toFixed(1) + 'KB'
   return (bytes / 1048576).toFixed(1) + 'MB'
+}
+
+function escapeHtml(text) {
+  if (!text) return ''
+  const div = document.createElement('div')
+  div.textContent = text
+  return div.innerHTML
 }
 
 function avatarEl(name, avatarUrl, size = 'w-10 h-10', rounded = 'rounded-xl') {
@@ -1730,8 +1910,11 @@ function getCurrentPage() {
   return active.id.replace('page-', '')
 }
 
+// ============================
 // CARD DESCRIPTION HANDLERS
+// ============================
 let activeCardDesc = null
+
 function showCardDesc(cardEl) {
   const overlay = cardEl.querySelector('.content-desc-overlay')
   if (!overlay) return
@@ -1742,10 +1925,12 @@ function showCardDesc(cardEl) {
   cardEl.classList.add('active-desc')
   activeCardDesc = cardEl
 }
+
 function hideCardDesc(cardEl) {
   cardEl.classList.remove('active-desc')
   if (activeCardDesc === cardEl) activeCardDesc = null
 }
+
 function toggleCardDesc(cardEl) {
   if (cardEl.classList.contains('active-desc')) hideCardDesc(cardEl)
   else showCardDesc(cardEl)
@@ -1757,7 +1942,7 @@ function toggleCardDesc(cardEl) {
 // ============================
 function ensureSBMethods() {
   if (!window._SB) return
-  // Add missing methods if needed (stub using supabase client)
+  
   if (!window._SB.getRefs) {
     window._SB.getRefs = async (userId) => {
       const { data, error } = await window._SB.supabase.from('refs').select('*').eq('user_id', userId)
@@ -1794,7 +1979,6 @@ function ensureSBMethods() {
   }
   if (!window._SB.likePost) {
     window._SB.likePost = async (postId, userId) => {
-      // simple increment likes_count, no duplicate check for demo
       const { error } = await window._SB.supabase.rpc('increment_post_likes', { post_id: postId })
       if (error) console.warn(error)
     }
@@ -1809,7 +1993,6 @@ function ensureSBMethods() {
         date: new Date().toISOString()
       })
       if (error) throw error
-      // also update ratings array in contents table (optional)
       await window._SB.supabase.rpc('add_content_rating', { content_id: contentId, rating: comment.rating })
     }
   }
@@ -1824,8 +2007,4 @@ function ensureSBMethods() {
 // ============================
 // INIT
 // ============================
-;(function resetStaleCategories() {
-  // nothing to do with localStorage
-})();
-
 init()
