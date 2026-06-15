@@ -1646,35 +1646,26 @@ function deleteProject(id) {
  
 async function saveEditProfil() {
   const updates = {
-    full_name: document.getElementById('ep-name').value.trim(),
-    username: document.getElementById('ep-username').value.trim(),
+    username: document.getElementById('ep-username').value.trim() || CURRENT_PROFILE.username,
     bio: document.getElementById('ep-bio').value.trim(),
     location: document.getElementById('ep-location').value.trim(),
     occupation: document.getElementById('ep-occupation').value.trim(),
     tech_stack: document.getElementById('ep-techstack').value.trim(),
     interests: document.getElementById('ep-interests').value.trim(),
   };
-  
-  // Update ke Supabase
-  const updatedProfile = await window._SB.updateProfile(CURRENT_USER.id, updates);
-  
-  // Update CURRENT_PROFILE
-  CURRENT_PROFILE = updatedProfile;
-  
-  // Update localStorage cache
+  CURRENT_PROFILE = await window._SB.updateProfile(CURRENT_USER.id, updates);
   DB.set('user_profile', {
-    name: updatedProfile.username,
-    username: updatedProfile.username,
-    bio: updatedProfile.bio || '',
-    location: updatedProfile.location || '',
-    occupation: updatedProfile.occupation || '',
-    techStack: updatedProfile.tech_stack || '',
-    interests: updatedProfile.interests || '',
-    avatarUrl: updatedProfile.avatar_url || '',
-    coverUrl: updatedProfile.cover_url || '',
+    name: CURRENT_PROFILE.username,
+    username: CURRENT_PROFILE.username,
+    bio: CURRENT_PROFILE.bio || '',
+    location: CURRENT_PROFILE.location || '',
+    occupation: CURRENT_PROFILE.occupation || '',
+    techStack: CURRENT_PROFILE.tech_stack || '',
+    interests: CURRENT_PROFILE.interests || '',
+    avatarUrl: CURRENT_PROFILE.avatar_url || '',
+    coverUrl: CURRENT_PROFILE.cover_url || '',
     followers: 0, following: 0,
   });
-  
   toast('✅ Profil berhasil diperbarui!');
   closeModal('modal-editprofil');
   renderProfil();
@@ -1745,18 +1736,17 @@ function openPostModal() {
 function openProjectModal() { openModal('modal-project'); }
  
 function openEditProfil() {
-  if (!CURRENT_PROFILE) return;
-  
-  document.getElementById('ep-name').value = CURRENT_PROFILE.full_name || '';
-  document.getElementById('ep-username').value = CURRENT_PROFILE.username || '';
-  document.getElementById('ep-bio').value = CURRENT_PROFILE.bio || '';
-  document.getElementById('ep-location').value = CURRENT_PROFILE.location || '';
-  document.getElementById('ep-occupation').value = CURRENT_PROFILE.occupation || '';
-  document.getElementById('ep-techstack').value = CURRENT_PROFILE.tech_stack || '';
-  document.getElementById('ep-interests').value = CURRENT_PROFILE.interests || '';
-  
+  const profile = DB.get('user_profile') || {};
+  document.getElementById('ep-name').value = profile.name || '';
+  document.getElementById('ep-username').value = profile.username || '';
+  document.getElementById('ep-bio').value = profile.bio || '';
+  document.getElementById('ep-location').value = profile.location || '';
+  document.getElementById('ep-occupation').value = profile.occupation || '';
+  document.getElementById('ep-techstack').value = profile.techStack || '';
+  document.getElementById('ep-interests').value = profile.interests || '';
   openModal('modal-editprofil');
 }
+ 
 function openModal(id) { document.getElementById(id).classList.add('open'); document.body.style.overflow = 'hidden'; }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); document.body.style.overflow = ''; }
 function closeModalBackdrop(e, id) { if (e.target.id === id) closeModal(id); }
@@ -1894,5 +1884,250 @@ function _ensureSBMethods() {
     };
   }
 }
+// ============================
+// PROFIL REFRESH FROM SUPABASE (NO LOCALSTORAGE)
+// ============================
+
+// Fungsi untuk refresh data profil langsung dari Supabase
+async function refreshProfileFromSupabase() {
+  if (!CURRENT_USER) return null;
+  
+  try {
+    // Ambil data terbaru dari Supabase
+    const freshProfile = await window._SB.getProfile(CURRENT_USER.id);
+    if (freshProfile) {
+      CURRENT_PROFILE = freshProfile;
+      
+      // Update UI jika halaman profil sedang aktif
+      const activePage = getCurrentPage();
+      if (activePage === 'profil') {
+        renderProfil();
+      }
+      
+      // Update sidebar user info
+      updateSidebarUser();
+      
+      return freshProfile;
+    }
+  } catch(e) {
+    console.error('Refresh profile error:', e);
+  }
+  return CURRENT_PROFILE;
+}
+
+// Override saveEditProfil agar refresh otomatis
+const originalSaveEditProfil = saveEditProfil;
+saveEditProfil = async function() {
+  const updates = {
+    full_name: document.getElementById('ep-name')?.value.trim(),
+    username: document.getElementById('ep-username')?.value.trim(),
+    bio: document.getElementById('ep-bio')?.value.trim(),
+    location: document.getElementById('ep-location')?.value.trim(),
+    occupation: document.getElementById('ep-occupation')?.value.trim(),
+    tech_stack: document.getElementById('ep-techstack')?.value.trim(),
+    interests: document.getElementById('ep-interests')?.value.trim(),
+  };
+  
+  // Hapus field yang kosong
+  Object.keys(updates).forEach(key => {
+    if (updates[key] === undefined || updates[key] === '') {
+      delete updates[key];
+    }
+  });
+  
+  if (Object.keys(updates).length === 0) {
+    toast('⚠️ Tidak ada perubahan');
+    closeModal('modal-editprofil');
+    return;
+  }
+  
+  try {
+    // Update ke Supabase
+    const updatedProfile = await window._SB.updateProfile(CURRENT_USER.id, updates);
+    CURRENT_PROFILE = updatedProfile;
+    
+    // Update UI
+    if (getCurrentPage() === 'profil') {
+      renderProfil();
+    }
+    updateSidebarUser();
+    
+    toast('✅ Profil berhasil diperbarui!');
+    closeModal('modal-editprofil');
+  } catch(e) {
+    toast('❌ Gagal update profil: ' + e.message, true);
+  }
+};
+
+// Override uploadAvatar agar refresh otomatis
+const originalUploadAvatar = uploadAvatar;
+uploadAvatar = async function(input) {
+  if (!input?.files?.[0]) return;
+  
+  toast('⏳ Mengupload foto...');
+  try {
+    const url = await window._SB.uploadAvatarFile(CURRENT_USER.id, input.files[0]);
+    await window._SB.updateProfile(CURRENT_USER.id, { avatar_url: url });
+    
+    // Refresh profile dari database
+    await refreshProfileFromSupabase();
+    
+    toast('✅ Foto profil diperbarui!');
+  } catch(e) {
+    toast('❌ Gagal upload foto: ' + e.message, true);
+  }
+};
+
+// Override uploadCover agar refresh otomatis
+const originalUploadCover = uploadCover;
+uploadCover = async function(input) {
+  if (!input?.files?.[0]) return;
+  
+  toast('⏳ Mengupload cover...');
+  try {
+    const url = await window._SB.uploadCoverFile(CURRENT_USER.id, input.files[0]);
+    await window._SB.updateProfile(CURRENT_USER.id, { cover_url: url });
+    
+    // Refresh profile dari database
+    await refreshProfileFromSupabase();
+    
+    toast('✅ Cover diperbarui!');
+  } catch(e) {
+    toast('❌ Gagal upload cover: ' + e.message, true);
+  }
+};
+
+// Override renderProfil agar selalu pakai CURRENT_PROFILE fresh
+const originalRenderProfil = renderProfil;
+renderProfil = function() {
+  if (!CURRENT_USER) { 
+    openAuthModal(); 
+    return; 
+  }
+  
+  // Jika CURRENT_PROFILE belum ada, ambil dari database
+  if (!CURRENT_PROFILE) {
+    refreshProfileFromSupabase().then(() => {
+      originalRenderProfil();
+    });
+    return;
+  }
+  
+  // Gunakan CURRENT_PROFILE langsung (sudah fresh dari database)
+  const profile = CURRENT_PROFILE;
+  const contents = DB.getArr('contents').filter(c => c.userId === CURRENT_USER.id);
+  const discussions = DB.getArr('discussions').filter(d => d.userId === CURRENT_USER.id);
+ 
+  // Update UI
+  const nameEl = document.getElementById('profil-name');
+  if (nameEl) nameEl.textContent = profile.full_name || profile.username || 'Pengguna';
+  
+  const usernameEl = document.getElementById('profil-username');
+  if (usernameEl) usernameEl.textContent = '@' + (profile.username || 'user');
+  
+  const bioEl = document.getElementById('profil-bio');
+  if (bioEl) bioEl.textContent = profile.bio || 'Tidak ada bio';
+  
+  const locationEl = document.getElementById('info-location');
+  if (locationEl) locationEl.textContent = profile.location || 'Tidak disebutkan';
+  
+  const occupationEl = document.getElementById('info-occupation');
+  if (occupationEl) occupationEl.textContent = profile.occupation || 'Tidak disebutkan';
+  
+  const techstackEl = document.getElementById('info-techstack');
+  if (techstackEl) techstackEl.textContent = profile.tech_stack || 'Tidak disebutkan';
+  
+  const interestsEl = document.getElementById('info-interests');
+  if (interestsEl) interestsEl.textContent = profile.interests || 'Tidak disebutkan';
+ 
+  // Avatar
+  const avatarImg = document.getElementById('avatar-img');
+  const avatarInitial = document.getElementById('avatar-initial');
+  if (profile.avatar_url) {
+    if (avatarImg) {
+      avatarImg.src = profile.avatar_url;
+      avatarImg.classList.remove('hidden');
+    }
+    if (avatarInitial) avatarInitial.classList.add('hidden');
+  } else {
+    const initial = (profile.full_name || profile.username || 'U')[0].toUpperCase();
+    if (avatarInitial) {
+      avatarInitial.textContent = initial;
+      avatarInitial.classList.remove('hidden');
+    }
+    if (avatarImg) avatarImg.classList.add('hidden');
+  }
+  
+  // Cover
+  const coverImg = document.getElementById('cover-img');
+  if (profile.cover_url) {
+    if (coverImg) {
+      coverImg.src = profile.cover_url;
+      coverImg.classList.remove('hidden');
+    }
+  } else {
+    if (coverImg) coverImg.classList.add('hidden');
+  }
+ 
+  // Stats
+  const followersEl = document.getElementById('stat-followers');
+  if (followersEl) followersEl.textContent = profile.followers_count || 0;
+  
+  const followingEl = document.getElementById('stat-following');
+  if (followingEl) followingEl.textContent = profile.following_count || 0;
+  
+  const postsEl = document.getElementById('stat-posts');
+  if (postsEl) postsEl.textContent = contents.length;
+  
+  const likesEl = document.getElementById('stat-likes-total');
+  if (likesEl) likesEl.textContent = contents.reduce((a,c)=>a+(c.likes||0), 0);
+  
+  const commentsEl = document.getElementById('stat-comments');
+  if (commentsEl) commentsEl.textContent = discussions.reduce((a,d)=>a+(d.comments||0), 0);
+  
+  const sharesEl = document.getElementById('stat-shares');
+  if (sharesEl) sharesEl.textContent = discussions.reduce((a,d)=>a+(d.shares||0), 0);
+ 
+  renderRecentUploads();
+  renderProfilKonten();
+  renderProfilDiskusi();
+};
+
+// Override openEditProfil agar pakai CURRENT_PROFILE
+const originalOpenEditProfil = openEditProfil;
+openEditProfil = function() {
+  if (!CURRENT_PROFILE) {
+    refreshProfileFromSupabase().then(() => {
+      originalOpenEditProfil();
+    });
+    return;
+  }
+  
+  const nameInput = document.getElementById('ep-name');
+  if (nameInput) nameInput.value = CURRENT_PROFILE.full_name || '';
+  
+  const usernameInput = document.getElementById('ep-username');
+  if (usernameInput) usernameInput.value = CURRENT_PROFILE.username || '';
+  
+  const bioInput = document.getElementById('ep-bio');
+  if (bioInput) bioInput.value = CURRENT_PROFILE.bio || '';
+  
+  const locationInput = document.getElementById('ep-location');
+  if (locationInput) locationInput.value = CURRENT_PROFILE.location || '';
+  
+  const occupationInput = document.getElementById('ep-occupation');
+  if (occupationInput) occupationInput.value = CURRENT_PROFILE.occupation || '';
+  
+  const techstackInput = document.getElementById('ep-techstack');
+  if (techstackInput) techstackInput.value = CURRENT_PROFILE.tech_stack || '';
+  
+  const interestsInput = document.getElementById('ep-interests');
+  if (interestsInput) interestsInput.value = CURRENT_PROFILE.interests || '';
+  
+  openModal('modal-editprofil');
+};
+
+// Tambahkan fungsi forceRefreshProfil untuk dipanggil dari halaman profil
+window.forceRefreshProfil = refreshProfileFromSupabase;
 
 init();
