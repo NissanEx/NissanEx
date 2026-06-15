@@ -6,6 +6,36 @@ let CURRENT_USER = null
 let CURRENT_PROFILE = null
  
 // ============================
+// AUTH GUARD UNTUK URL LANGSUNG
+// ============================
+// Halaman yang memerlukan login
+const PROTECTED_PAGES = ['profil', 'pengaturan', 'disimpan']
+
+// Ambil nama file dari URL
+const currentPage = window.location.pathname.split('/').pop().replace('.html', '') || 'index'
+
+// Cek apakah halaman saat ini butuh login
+if (PROTECTED_PAGES.includes(currentPage)) {
+  (async function() {
+    // Tunggu window._SB siap
+    let wait = 0
+    while (!window._SB && wait < 50) {
+      await new Promise(r => setTimeout(r, 100))
+      wait++
+    }
+    
+    if (window._SB) {
+      const user = await window._SB.getCurrentUser()
+      if (!user) {
+        // Redirect ke auth.html
+        window.location.href = 'auth.html'
+      }
+    }
+  })()
+}
+
+
+// ============================
 // GLOBAL CONSTANTS
 // ============================
 const fileIcons = {image:'fas fa-image',video:'fas fa-file-video',pdf:'fas fa-file-pdf',doc:'fas fa-file-word',docx:'fas fa-file-word'};
