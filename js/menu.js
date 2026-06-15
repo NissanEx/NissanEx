@@ -747,40 +747,59 @@ function renderAnalyst() {
 }
  
 function renderProfil() {
-  if (!CURRENT_USER) { openAuthModal(); return }
-  const profile = DB.get('user_profile') || {};
-  const contents = DB.getArr('contents');
-  const discussions = DB.getArr('discussions');
+  if (!CURRENT_USER) { 
+    openAuthModal(); 
+    return; 
+  }
+  
+  // Jika CURRENT_PROFILE belum ada, tunggu atau ambil ulang
+  if (!CURRENT_PROFILE) {
+    setTimeout(renderProfil, 500);
+    return;
+  }
+  
+  // Gunakan CURRENT_PROFILE langsung dari Supabase
+  const profile = CURRENT_PROFILE;
+  const contents = DB.getArr('contents').filter(c => c.userId === CURRENT_USER.id);
+  const discussions = DB.getArr('discussions').filter(d => d.userId === CURRENT_USER.id);
  
-  document.getElementById('profil-name').textContent = profile.name || 'San Pelong';
-  document.getElementById('profil-username').textContent = '@'+(profile.username||'sanpelong');
-  document.getElementById('profil-bio').textContent = profile.bio || '';
-  document.getElementById('info-location').textContent = profile.location || '';
-  document.getElementById('info-occupation').textContent = profile.occupation || '';
-  document.getElementById('info-techstack').textContent = profile.techStack || '';
-  document.getElementById('info-interests').textContent = profile.interests || '';
+  // Update UI dengan data dari Supabase
+  document.getElementById('profil-name').textContent = profile.full_name || profile.username || 'Pengguna';
+  document.getElementById('profil-username').textContent = '@' + (profile.username || 'user');
+  document.getElementById('profil-bio').textContent = profile.bio || 'Tidak ada bio';
+  document.getElementById('info-location').textContent = profile.location || 'Tidak disebutkan';
+  document.getElementById('info-occupation').textContent = profile.occupation || 'Tidak disebutkan';
+  document.getElementById('info-techstack').textContent = profile.tech_stack || 'Tidak disebutkan';
+  document.getElementById('info-interests').textContent = profile.interests || 'Tidak disebutkan';
  
-  if (profile.avatarUrl) {
-    document.getElementById('avatar-img').src = profile.avatarUrl;
+  // Avatar
+  if (profile.avatar_url) {
+    document.getElementById('avatar-img').src = profile.avatar_url;
     document.getElementById('avatar-img').classList.remove('hidden');
     document.getElementById('avatar-initial').classList.add('hidden');
   } else {
-    document.getElementById('avatar-initial').textContent = (profile.name||'S')[0].toUpperCase();
+    const initial = (profile.full_name || profile.username || 'U')[0].toUpperCase();
+    document.getElementById('avatar-initial').textContent = initial;
     document.getElementById('avatar-img').classList.add('hidden');
     document.getElementById('avatar-initial').classList.remove('hidden');
   }
-  if (profile.coverUrl) {
+  
+  // Cover
+  if (profile.cover_url) {
     const coverImg = document.getElementById('cover-img');
-    coverImg.src = profile.coverUrl;
+    coverImg.src = profile.cover_url;
     coverImg.classList.remove('hidden');
+  } else {
+    document.getElementById('cover-img').classList.add('hidden');
   }
  
-  document.getElementById('stat-followers').textContent = profile.followers || 0;
-  document.getElementById('stat-following').textContent = profile.following || 0;
+  // Stats
+  document.getElementById('stat-followers').textContent = profile.followers_count || 0;
+  document.getElementById('stat-following').textContent = profile.following_count || 0;
   document.getElementById('stat-posts').textContent = contents.length;
-  document.getElementById('stat-likes-total').textContent = contents.reduce((a,c)=>a+c.likes,0);
-  document.getElementById('stat-comments').textContent = discussions.reduce((a,d)=>a+d.comments,0);
-  document.getElementById('stat-shares').textContent = discussions.reduce((a,d)=>a+d.shares,0);
+  document.getElementById('stat-likes-total').textContent = contents.reduce((a,c)=>a+(c.likes||0), 0);
+  document.getElementById('stat-comments').textContent = discussions.reduce((a,d)=>a+(d.comments||0), 0);
+  document.getElementById('stat-shares').textContent = discussions.reduce((a,d)=>a+(d.shares||0), 0);
  
   renderRecentUploads();
   renderProfilKonten();
@@ -1627,26 +1646,35 @@ function deleteProject(id) {
  
 async function saveEditProfil() {
   const updates = {
-    username: document.getElementById('ep-username').value.trim() || CURRENT_PROFILE.username,
+    full_name: document.getElementById('ep-name').value.trim(),
+    username: document.getElementById('ep-username').value.trim(),
     bio: document.getElementById('ep-bio').value.trim(),
     location: document.getElementById('ep-location').value.trim(),
     occupation: document.getElementById('ep-occupation').value.trim(),
     tech_stack: document.getElementById('ep-techstack').value.trim(),
     interests: document.getElementById('ep-interests').value.trim(),
   };
-  CURRENT_PROFILE = await window._SB.updateProfile(CURRENT_USER.id, updates);
+  
+  // Update ke Supabase
+  const updatedProfile = await window._SB.updateProfile(CURRENT_USER.id, updates);
+  
+  // Update CURRENT_PROFILE
+  CURRENT_PROFILE = updatedProfile;
+  
+  // Update localStorage cache
   DB.set('user_profile', {
-    name: CURRENT_PROFILE.username,
-    username: CURRENT_PROFILE.username,
-    bio: CURRENT_PROFILE.bio || '',
-    location: CURRENT_PROFILE.location || '',
-    occupation: CURRENT_PROFILE.occupation || '',
-    techStack: CURRENT_PROFILE.tech_stack || '',
-    interests: CURRENT_PROFILE.interests || '',
-    avatarUrl: CURRENT_PROFILE.avatar_url || '',
-    coverUrl: CURRENT_PROFILE.cover_url || '',
+    name: updatedProfile.username,
+    username: updatedProfile.username,
+    bio: updatedProfile.bio || '',
+    location: updatedProfile.location || '',
+    occupation: updatedProfile.occupation || '',
+    techStack: updatedProfile.tech_stack || '',
+    interests: updatedProfile.interests || '',
+    avatarUrl: updatedProfile.avatar_url || '',
+    coverUrl: updatedProfile.cover_url || '',
     followers: 0, following: 0,
   });
+  
   toast('✅ Profil berhasil diperbarui!');
   closeModal('modal-editprofil');
   renderProfil();
@@ -1717,17 +1745,18 @@ function openPostModal() {
 function openProjectModal() { openModal('modal-project'); }
  
 function openEditProfil() {
-  const profile = DB.get('user_profile') || {};
-  document.getElementById('ep-name').value = profile.name || '';
-  document.getElementById('ep-username').value = profile.username || '';
-  document.getElementById('ep-bio').value = profile.bio || '';
-  document.getElementById('ep-location').value = profile.location || '';
-  document.getElementById('ep-occupation').value = profile.occupation || '';
-  document.getElementById('ep-techstack').value = profile.techStack || '';
-  document.getElementById('ep-interests').value = profile.interests || '';
+  if (!CURRENT_PROFILE) return;
+  
+  document.getElementById('ep-name').value = CURRENT_PROFILE.full_name || '';
+  document.getElementById('ep-username').value = CURRENT_PROFILE.username || '';
+  document.getElementById('ep-bio').value = CURRENT_PROFILE.bio || '';
+  document.getElementById('ep-location').value = CURRENT_PROFILE.location || '';
+  document.getElementById('ep-occupation').value = CURRENT_PROFILE.occupation || '';
+  document.getElementById('ep-techstack').value = CURRENT_PROFILE.tech_stack || '';
+  document.getElementById('ep-interests').value = CURRENT_PROFILE.interests || '';
+  
   openModal('modal-editprofil');
 }
- 
 function openModal(id) { document.getElementById(id).classList.add('open'); document.body.style.overflow = 'hidden'; }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); document.body.style.overflow = ''; }
 function closeModalBackdrop(e, id) { if (e.target.id === id) closeModal(id); }
