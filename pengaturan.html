@@ -134,16 +134,21 @@
 <!-- Modal lain tidak diperlukan di pengaturan, tapi bisa ditambahkan jika ingin -->
 <script src="js/menu.js"></script>
 <script>
+  // Redirect ke beranda jika belum login
+  (async function() {
+    await new Promise(r => setTimeout(r, 500));
+    
+    if (!window.CURRENT_USER) {
+      window.location.href = 'index.html';
+      return;
+    }
+    
+    if (typeof renderPengaturan === 'function') renderPengaturan();
+  })();
+  
   window.navigateTo = function(page) {
     if (page === 'beranda') window.location.href = 'index.html';
     else if (page === 'profil') window.location.href = 'profil.html';
-    else if (page === 'pengaturan') { /* tetap */ }
-  };
-  
-  window.renderPengaturanIfLoggedIn = function() {
-    if (window.CURRENT_USER && typeof renderPengaturan === 'function') {
-      renderPengaturan();
-    }
   };
 </script>
 </body>

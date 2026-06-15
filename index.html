@@ -11,6 +11,7 @@
 <script type="module" src="supabase.js"></script>
 </head>
 <body class="flex min-h-screen">
+    
 
 <!-- SIDEBAR (hanya navigasi internal + link ke profil & pengaturan) -->
 <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-64 bg-black text-white transform -translate-x-full lg:translate-x-0 transition-transform duration-300 shadow-2xl flex flex-col">
@@ -176,25 +177,36 @@
 <script src="js/menu.js"></script>
 <script>
   window.navigateTo = function(page) {
-    if (page === 'profil') window.location.href = 'profil.html';
-    else if (page === 'pengaturan') window.location.href = 'pengaturan.html';
-    else {
-      document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
-      const target = document.getElementById('page-'+page);
-      if (target) target.classList.add('active');
-      document.querySelectorAll('.nav-link').forEach(l => {
-        l.classList.remove('active');
-        if (l.dataset.page === page) l.classList.add('active');
-      });
-      if (window.innerWidth < 1024) {
-        document.getElementById('sidebar').classList.add('-translate-x-full');
-        document.getElementById('overlay').classList.add('hidden');
+    // Halaman yang butuh login
+    if (page === 'profil' || page === 'pengaturan') {
+      if (!window.CURRENT_USER) {
+        openAuthModal();
+        toast('⚠️ Login dulu');
+        return;
       }
-      window.scrollTo({top:0,behavior:'smooth'});
-      if (typeof renderPage === 'function') renderPage(page);
+      window.location.href = page === 'profil' ? 'profil.html' : 'pengaturan.html';
+      return;
     }
+    
+    // Navigasi internal di index.html
+    document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
+    const target = document.getElementById('page-'+page);
+    if (target) target.classList.add('active');
+    document.querySelectorAll('.nav-link').forEach(l => {
+      l.classList.remove('active');
+      if (l.dataset.page === page) l.classList.add('active');
+    });
+    if (window.innerWidth < 1024) {
+      document.getElementById('sidebar').classList.add('-translate-x-full');
+      document.getElementById('overlay').classList.add('hidden');
+    }
+    window.scrollTo({top:0, behavior:'smooth'});
+    if (typeof renderPage === 'function') renderPage(page);
   };
-  document.addEventListener('DOMContentLoaded', () => { if (typeof init === 'function') init(); });
+  
+  document.addEventListener('DOMContentLoaded', () => { 
+    if (typeof init === 'function') init(); 
+  });
 </script>
 </body>
 </html>

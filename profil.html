@@ -238,18 +238,24 @@
 
 <script src="js/menu.js"></script>
 <script>
-  // Override navigasi
+  // Redirect ke beranda jika belum login
+  (async function() {
+    // Tunggu sebentar sampai auth siap
+    await new Promise(r => setTimeout(r, 500));
+    
+    // Cek login
+    if (!window.CURRENT_USER) {
+      window.location.href = 'index.html';
+      return;
+    }
+    
+    // Jika sudah login, render profil
+    if (typeof renderProfil === 'function') renderProfil();
+  })();
+  
   window.navigateTo = function(page) {
     if (page === 'beranda') window.location.href = 'index.html';
     else if (page === 'pengaturan') window.location.href = 'pengaturan.html';
-    else if (page === 'profil') { /* tetap di halaman ini */ }
-  };
-
-  // Fungsi render hanya jika sudah login (dipanggil dari menu.js)
-  window.renderProfilIfLoggedIn = function() {
-    if (window.CURRENT_USER && typeof renderProfil === 'function') {
-      renderProfil();
-    }
   };
 </script>
 </script>
