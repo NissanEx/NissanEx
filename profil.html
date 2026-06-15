@@ -7,7 +7,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
-<link rel="stylesheet"href="css/menu.css">
+<link rel="stylesheet" href="css/menu.css">
 <script type="module" src="supabase.js"></script>
 </head>
 <body class="flex min-h-screen">
@@ -82,242 +82,230 @@
     </div>
   </header>
 
-  <!-- ===== KONTEN PROFIL ===== -->
+  <!-- ===== KONTEN PROFIL (LANGSUNG DARI MENU.HTML) ===== -->
   
   <!-- Cover -->
-  <div class="mb-6">
-    <div class="relative w-full h-48 md:h-64 bg-gradient-to-r from-zinc-900 to-zinc-700 rounded-[2rem] shadow-lg overflow-hidden">
-      <img id="cover-img" src="" class="w-full h-full object-cover hidden">
-      <label class="absolute top-4 right-4 bg-black/70 hover:bg-black text-white px-4 py-2 rounded-xl cursor-pointer flex items-center gap-2 text-sm font-bold">
-        <i class="fas fa-camera"></i> Ubah Cover
-        <input type="file" accept="image/*" onchange="uploadCover(this)" class="hidden">
-      </label>
-    </div>
+ <div class="mb-6">
+      <div class="relative w-full h-48 md:h-64 bg-gradient-to-r from-zinc-900 to-zinc-700 rounded-[2rem] shadow-lg overflow-hidden">
+        <img id="cover-img" src="" class="w-full h-full object-cover hidden">
+        <label class="absolute top-4 right-4 bg-black/70 hover:bg-black text-white px-4 py-2 rounded-xl cursor-pointer flex items-center gap-2 text-sm font-bold">
+          <i class="fas fa-camera"></i> Ubah Cover
+          <input type="file" accept="image/*" onchange="uploadCover(this)" class="hidden">
+        </label>
+      </div>
     
     <!-- Profile card -->
-    <div class="bg-white rounded-[2rem] shadow-xl border border-gray-100 mx-4 md:mx-0 -mt-16 relative z-10 p-6 md:p-8">
-      <div class="flex flex-col md:flex-row gap-6 items-start md:items-end">
-        <div class="relative -mt-24 md:-mt-20">
-          <div id="avatar-wrap" class="w-28 h-28 md:w-36 md:h-36 rounded-[1.5rem] bg-gradient-to-br from-zinc-700 to-black shadow-xl flex items-center justify-center text-white text-5xl font-bold border-4 border-white overflow-hidden">
-            <img id="avatar-img" src="" class="w-full h-full object-cover hidden">
-            <span id="avatar-initial">S</span>
+ <div class="bg-white rounded-[2rem] shadow-xl border border-gray-100 mx-4 md:mx-0 -mt-16 relative z-10 p-6 md:p-8">
+        <div class="flex flex-col md:flex-row gap-6 items-start md:items-end">
+          <div class="relative -mt-24 md:-mt-20">
+            <div id="avatar-wrap" class="w-28 h-28 md:w-36 md:h-36 rounded-[1.5rem] bg-gradient-to-br from-zinc-700 to-black shadow-xl flex items-center justify-center text-white text-5xl font-bold border-4 border-white overflow-hidden">
+              <img id="avatar-img" src="" class="w-full h-full object-cover hidden">
+              <span id="avatar-initial">?</span>
+            </div>
+            <label class="absolute bottom-2 right-2 bg-black text-white p-2 rounded-lg cursor-pointer hover:bg-zinc-800 transition shadow">
+              <i class="fas fa-camera text-xs"></i>
+              <input type="file" accept="image/*" onchange="uploadAvatar(this)" class="hidden">
+            </label>
           </div>
-          <label class="absolute bottom-2 right-2 bg-black text-white p-2 rounded-lg cursor-pointer hover:bg-zinc-800 transition shadow">
-            <i class="fas fa-camera text-xs"></i>
-            <input type="file" accept="image/*" onchange="uploadAvatar(this)" class="hidden">
-          </label>
-        </div>
-        <div class="flex-1 pb-2">
-          <h1 id="profil-name" class="text-3xl font-bold text-black mb-1 tracking-tight">Memuat...</h1>
-          <p id="profil-username" class="text-gray-400 mb-1">@memuat</p>
-          <p id="profil-bio" class="text-gray-600 text-sm mb-4">Memuat data profil...</p>
-          <div class="flex gap-2 flex-wrap">
-            <button onclick="openUploadModal()" class="bg-black text-white px-5 py-2 rounded-xl font-bold hover:bg-zinc-800 transition flex items-center gap-2 text-sm">
-              <i class="fas fa-cloud-upload-alt"></i> Upload Konten
-            </button>
-            <button onclick="openEditProfil()" class="border-2 border-black text-black px-5 py-2 rounded-xl font-bold hover:bg-gray-50 transition text-sm flex items-center gap-2">
-              <i class="fas fa-pen"></i> Edit Profil
-            </button>
+          <div class="flex-1 pb-2">
+            <h1 id="profil-name" class="text-3xl font-bold text-black mb-1 tracking-tight">Memuat...</h1>
+            <p id="profil-username" class="text-gray-400 mb-1">@memuat</p>
+            <p id="profil-bio" class="text-gray-600 text-sm mb-4">Memuat data profil...</p>
+            <div class="flex gap-2 flex-wrap">
+              <button onclick="openUploadModal()" class="bg-black text-white px-5 py-2 rounded-xl font-bold hover:bg-zinc-800 transition flex items-center gap-2 text-sm">
+                <i class="fas fa-cloud-upload-alt"></i> Upload Konten
+              </button>
+              <button onclick="openEditProfil()" class="border-2 border-black text-black px-5 py-2 rounded-xl font-bold hover:bg-gray-50 transition text-sm flex items-center gap-2">
+                <i class="fas fa-pen"></i> Edit Profil
+              </button>
+            </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
 
   <!-- Stats -->
-  <div class="grid grid-cols-3 md:grid-cols-6 gap-4 mb-8">
-    <div class="bg-white rounded-[1.5rem] shadow border border-gray-100 p-4 text-center">
-      <div id="stat-followers" class="text-2xl font-bold text-black">0</div>
-      <p class="text-xs text-gray-500 mt-1">Pengikut</p>
+ <div class="grid grid-cols-3 md:grid-cols-6 gap-4 mb-8">
+      <div class="bg-white rounded-[1.5rem] shadow border border-gray-100 p-4 text-center">
+        <div id="stat-followers" class="text-2xl font-bold text-black">0</div>
+        <p class="text-xs text-gray-500 mt-1">Pengikut</p>
+      </div>
+      <div class="bg-white rounded-[1.5rem] shadow border border-gray-100 p-4 text-center">
+        <div id="stat-following" class="text-2xl font-bold text-black">0</div>
+        <p class="text-xs text-gray-500 mt-1">Mengikuti</p>
+      </div>
+      <div class="bg-white rounded-[1.5rem] shadow border border-gray-100 p-4 text-center">
+        <div id="stat-posts" class="text-2xl font-bold text-black">0</div>
+        <p class="text-xs text-gray-500 mt-1">Postingan</p>
+      </div>
+      <div class="bg-white rounded-[1.5rem] shadow border border-gray-100 p-4 text-center">
+        <div id="stat-likes-total" class="text-2xl font-bold text-black">0</div>
+        <p class="text-xs text-gray-500 mt-1">Suka</p>
+      </div>
+      <div class="bg-white rounded-[1.5rem] shadow border border-gray-100 p-4 text-center">
+        <div id="stat-comments" class="text-2xl font-bold text-black">0</div>
+        <p class="text-xs text-gray-500 mt-1">Komentar</p>
+      </div>
+      <div class="bg-white rounded-[1.5rem] shadow border border-gray-100 p-4 text-center">
+        <div id="stat-shares" class="text-2xl font-bold text-black">0</div>
+        <p class="text-xs text-gray-500 mt-1">Bagikan</p>
+      </div>
     </div>
-    <div class="bg-white rounded-[1.5rem] shadow border border-gray-100 p-4 text-center">
-      <div id="stat-following" class="text-2xl font-bold text-black">0</div>
-      <p class="text-xs text-gray-500 mt-1">Mengikuti</p>
-    </div>
-    <div class="bg-white rounded-[1.5rem] shadow border border-gray-100 p-4 text-center">
-      <div id="stat-posts" class="text-2xl font-bold text-black">0</div>
-      <p class="text-xs text-gray-500 mt-1">Postingan</p>
-    </div>
-    <div class="bg-white rounded-[1.5rem] shadow border border-gray-100 p-4 text-center">
-      <div id="stat-likes-total" class="text-2xl font-bold text-black">0</div>
-      <p class="text-xs text-gray-500 mt-1">Suka</p>
-    </div>
-    <div class="bg-white rounded-[1.5rem] shadow border border-gray-100 p-4 text-center">
-      <div id="stat-comments" class="text-2xl font-bold text-black">0</div>
-      <p class="text-xs text-gray-500 mt-1">Komentar</p>
-    </div>
-    <div class="bg-white rounded-[1.5rem] shadow border border-gray-100 p-4 text-center">
-      <div id="stat-shares" class="text-2xl font-bold text-black">0</div>
-      <p class="text-xs text-gray-500 mt-1">Bagikan</p>
-    </div>
-  </div>
 
   <!-- About + Upload section -->
-  <div class="grid md:grid-cols-3 gap-6 mb-8">
-    <div class="md:col-span-2 bg-white rounded-[2rem] shadow-xl border border-gray-100 p-8">
-      <h2 class="text-2xl font-bold text-black mb-6">Tentang Saya</h2>
-      <div class="space-y-4 text-gray-700 text-sm">
-        <div class="flex items-start gap-4">
-          <i class="fas fa-map-marker-alt text-black mt-0.5 flex-shrink-0"></i>
-          <div><p class="font-bold text-black">Lokasi</p><p id="info-location">-</p></div>
-        </div>
-        <div class="flex items-start gap-4">
-          <i class="fas fa-briefcase text-black mt-0.5 flex-shrink-0"></i>
-          <div><p class="font-bold text-black">Pekerjaan</p><p id="info-occupation">-</p></div>
-        </div>
-        <div class="flex items-start gap-4">
-          <i class="fas fa-code text-black mt-0.5 flex-shrink-0"></i>
-          <div><p class="font-bold text-black">Tech Stack</p><p id="info-techstack">-</p></div>
-        </div>
-        <div class="flex items-start gap-4">
-          <i class="fas fa-heart text-black mt-0.5 flex-shrink-0"></i>
-          <div><p class="font-bold text-black">Minat</p><p id="info-interests">-</p></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Upload panel -->
-    <div class="bg-white rounded-[2rem] shadow-xl border border-gray-100 p-6">
-      <h3 class="text-xl font-bold text-black mb-5 flex items-center gap-2">
-        <i class="fas fa-cloud-upload-alt"></i> Upload Konten
-      </h3>
-      <div class="flex gap-2 mb-5 bg-gray-100 p-1 rounded-xl">
-        <button onclick="setUploadTab('konten')" class="upload-tab active flex-1 text-center py-2 rounded-lg text-sm font-medium transition" id="tab-konten">
-          <i class="fas fa-file-alt mr-1"></i> Konten
-        </button>
-        <button onclick="setUploadTab('linkweb')" class="upload-tab flex-1 text-center py-2 rounded-lg text-sm font-medium transition" id="tab-linkweb">
-          <i class="fas fa-link mr-1"></i> Link Web
-        </button>
-      </div>
-      <div id="upload-konten-panel">
-        <div class="drop-zone mb-3 border-2 border-dashed border-gray-300 rounded-xl p-6 text-center cursor-pointer hover:border-black transition" id="drop-zone-mini" onclick="document.getElementById('mini-file').click()">
-          <input type="file" id="mini-file" accept="image/*,video/*,.pdf,.doc,.docx" onchange="handleMiniFile(this)" class="hidden">
-          <i class="fas fa-cloud-upload-alt text-2xl text-gray-300 mb-2 block"></i>
-          <p class="font-bold text-black text-xs mb-1">Drag & drop atau klik</p>
-          <p class="text-xs text-gray-400">Image, Video, PDF, Dokumen</p>
-        </div>
-        <div id="mini-file-preview" class="hidden mb-3 p-3 bg-gray-50 rounded-xl flex items-center gap-3">
-          <i class="fas fa-file text-gray-400"></i>
-          <div class="flex-1 min-w-0">
-            <p id="mini-file-name" class="text-xs font-bold truncate"></p>
-            <p id="mini-file-size" class="text-xs text-gray-400"></p>
+   <div class="grid md:grid-cols-3 gap-6 mb-8">
+      <div class="md:col-span-2 bg-white rounded-[2rem] shadow-xl border border-gray-100 p-8">
+        <h2 class="text-2xl font-bold text-black mb-6">Tentang Saya</h2>
+        <div class="space-y-4 text-gray-700 text-sm">
+          <div class="flex items-start gap-4">
+            <i class="fas fa-map-marker-alt text-black mt-0.5 flex-shrink-0"></i>
+            <div><p class="font-bold text-black">Lokasi</p><p id="info-location">-</p></div>
           </div>
-          <button onclick="clearMiniFile()" class="text-gray-400 hover:text-red-500"><i class="fas fa-times"></i></button>
+          <div class="flex items-start gap-4">
+            <i class="fas fa-briefcase text-black mt-0.5 flex-shrink-0"></i>
+            <div><p class="font-bold text-black">Pekerjaan</p><p id="info-occupation">-</p></div>
+          </div>
+          <div class="flex items-start gap-4">
+            <i class="fas fa-code text-black mt-0.5 flex-shrink-0"></i>
+            <div><p class="font-bold text-black">Tech Stack</p><p id="info-techstack">-</p></div>
+          </div>
+          <div class="flex items-start gap-4">
+            <i class="fas fa-heart text-black mt-0.5 flex-shrink-0"></i>
+            <div><p class="font-bold text-black">Minat</p><p id="info-interests">-</p></div>
+          </div>
         </div>
-        <button onclick="openUploadModal()" class="w-full bg-black text-white py-2.5 rounded-xl font-bold text-sm hover:bg-zinc-800 transition">
-          <i class="fas fa-upload mr-2"></i>Upload & Detail
+      </div>
+    <!-- Upload panel -->
+      <div class="bg-white rounded-[2rem] shadow-xl border border-gray-100 p-6">
+        <h3 class="text-xl font-bold text-black mb-5 flex items-center gap-2">
+          <i class="fas fa-cloud-upload-alt"></i> Upload Konten
+        </h3>
+        <div class="flex gap-2 mb-5 bg-gray-100 p-1 rounded-xl">
+          <button onclick="setUploadTab('konten')" class="upload-tab active flex-1 text-center" id="tab-konten">
+            <i class="fas fa-file-alt mr-1"></i> Konten
+          </button>
+          <button onclick="setUploadTab('linkweb')" class="upload-tab flex-1 text-center" id="tab-linkweb">
+            <i class="fas fa-link mr-1"></i> Link Web
+          </button>
+        </div>
+
+      <!-- KONTEN UPLOAD -->
+        <div id="upload-konten-panel">
+          <div class="drop-zone mb-3" id="drop-zone-mini" onclick="document.getElementById('mini-file').click()">
+            <input type="file" id="mini-file" accept="image/*,video/*,.pdf,.doc,.docx" onchange="handleMiniFile(this)" class="hidden">
+            <i class="fas fa-cloud-upload-alt text-2xl text-gray-300 mb-2 block"></i>
+            <p class="font-bold text-black text-xs mb-1">Drag & drop atau klik</p>
+            <p class="text-xs text-gray-400">Image, Video, PDF, Dokumen</p>
+          </div>
+          <div id="mini-file-preview" class="hidden mb-3 p-3 bg-gray-50 rounded-xl flex items-center gap-3">
+            <i class="fas fa-file text-gray-400"></i>
+            <div class="flex-1 min-w-0">
+              <p id="mini-file-name" class="text-xs font-bold truncate"></p>
+              <p id="mini-file-size" class="text-xs text-gray-400"></p>
+            </div>
+            <button onclick="clearMiniFile()" class="text-gray-400 hover:text-red-500"><i class="fas fa-times"></i></button>
+          </div>
+          <button onclick="openUploadModal()" class="w-full bg-black text-white py-2.5 rounded-xl font-bold text-sm hover:bg-zinc-800 transition">
+            <i class="fas fa-upload mr-2"></i>Upload & Detail
+          </button>
+        </div>
+
+      <!-- LINK WEB UPLOAD -->
+        <div id="upload-linkweb-panel" class="hidden">
+          <button onclick="openLinkModal()" class="w-full border-2 border-dashed border-gray-300 text-gray-500 py-8 rounded-xl font-bold text-sm hover:border-black hover:text-black transition text-center">
+            <i class="fas fa-link text-2xl mb-2 block text-gray-300"></i> Tambah Link Web
+          </button>
+        </div>
+
+        <div class="mt-4">
+          <p class="text-xs font-bold text-black mb-2 uppercase tracking-widest">Upload Terbaru</p>
+          <div id="recent-uploads" class="space-y-2"></div>
+        </div>
+      </div>
+    </div>
+
+  <!-- Posts / Activity — TAB: Konten & Diskusi -->
+    <div class="bg-white rounded-[2rem] shadow-xl border border-gray-100 p-8">
+      <div class="flex items-center gap-6 mb-8 border-b border-gray-100 pb-4">
+        <button onclick="switchProfilTab('konten')" id="profil-tab-konten"
+          class="profil-tab-btn active text-lg font-bold text-black border-b-2 border-black pb-3 -mb-[1.05rem] transition">
+          <i class="fas fa-th-large mr-2 text-sm"></i>Konten
+        </button>
+        <button onclick="switchProfilTab('diskusi')" id="profil-tab-diskusi"
+          class="profil-tab-btn text-lg font-bold text-gray-400 border-b-2 border-transparent pb-3 -mb-[1.05rem] hover:text-black transition">
+          <i class="fas fa-comments mr-2 text-sm"></i>Diskusi
         </button>
       </div>
-      <div id="upload-linkweb-panel" class="hidden">
-        <button onclick="openLinkModal()" class="w-full border-2 border-dashed border-gray-300 text-gray-500 py-8 rounded-xl font-bold text-sm hover:border-black hover:text-black transition text-center">
-          <i class="fas fa-link text-2xl mb-2 block text-gray-300"></i> Tambah Link Web
-        </button>
+      <div id="profil-panel-konten">
+        <div id="profil-konten-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5"></div>
       </div>
-      <div class="mt-4">
-        <p class="text-xs font-bold text-black mb-2 uppercase tracking-widest">Upload Terbaru</p>
-        <div id="recent-uploads" class="space-y-2"></div>
+      <div id="profil-panel-diskusi" class="hidden">
+        <div id="profil-activity" class="space-y-0"></div>
       </div>
     </div>
   </div>
 
-  <!-- Posts / Activity -->
-  <div class="bg-white rounded-[2rem] shadow-xl border border-gray-100 p-8">
-    <div class="flex items-center gap-6 mb-8 border-b border-gray-100 pb-4">
-      <button onclick="switchProfilTab('konten')" id="profil-tab-konten"
-        class="profil-tab-btn active text-lg font-bold text-black border-b-2 border-black pb-3 -mb-[1.05rem] transition">
-        <i class="fas fa-th-large mr-2 text-sm"></i>Konten
-      </button>
-      <button onclick="switchProfilTab('diskusi')" id="profil-tab-diskusi"
-        class="profil-tab-btn text-lg font-bold text-gray-400 border-b-2 border-transparent pb-3 -mb-[1.05rem] hover:text-black transition">
-        <i class="fas fa-comments mr-2 text-sm"></i>Diskusi
-      </button>
-    </div>
-    <div id="profil-panel-konten">
-      <div id="profil-konten-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5"></div>
-    </div>
-    <div id="profil-panel-diskusi" class="hidden">
-      <div id="profil-activity" class="space-y-0"></div>
-    </div>
-  </div>
-
-</main>
-
-<!-- MODALS -->
-<div id="modal-upload" class="modal-backdrop fixed inset-0 bg-black/50 z-50 hidden items-center justify-center" onclick="closeModalBackdrop(event,'modal-upload')">
-  <div class="modal-box bg-white rounded-2xl max-w-lg w-full mx-4 p-6 relative max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+<!-- MODALS (sama persis dengan menu.html) -->
+<div id="modal-upload" class="modal-backdrop" onclick="closeModalBackdrop(event,'modal-upload')">
+  <div class="modal-box">
     <button onclick="closeModal('modal-upload')" class="absolute top-4 right-4 text-gray-400 hover:text-black"><i class="fas fa-times text-lg"></i></button>
     <h2 class="text-2xl font-bold mb-1">Upload Konten</h2>
     <p class="text-sm text-gray-400 mb-6">Tambah file konten ke platform</p>
     <div class="space-y-4">
-      <div><label class="form-label block text-sm font-bold mb-1">Judul Konten *</label><input id="up-title" type="text" class="form-input w-full border border-gray-300 rounded-xl p-3"></div>
-      <div><label class="form-label block text-sm font-bold mb-1">Kategori *</label><select id="up-category" class="form-input w-full border border-gray-300 rounded-xl p-3"><option value="">Pilih kategori...</option></select></div>
-      <div><label class="form-label block text-sm font-bold mb-1">Deskripsi</label><textarea id="up-desc" class="form-input w-full border border-gray-300 rounded-xl p-3" rows="3"></textarea></div>
-      <div><label class="form-label block text-sm font-bold mb-1">URL Web <span class="text-gray-400 font-normal">(opsional)</span></label><input id="up-url" type="url" class="form-input w-full border border-gray-300 rounded-xl p-3" placeholder="https://..."></div>
+      <div><label class="form-label">Judul Konten *</label><input id="up-title" type="text" class="form-input"></div>
+      <div><label class="form-label">Kategori *</label><select id="up-category" class="form-input"><option value="">Pilih kategori...</option></select></div>
+      <div><label class="form-label">Deskripsi</label><textarea id="up-desc" class="form-input" rows="3"></textarea></div>
+      <div><label class="form-label">File Konten</label><div class="drop-zone" id="drop-zone-main" onclick="document.getElementById('main-file').click()"><input type="file" id="main-file" class="hidden"><i class="fas fa-cloud-upload-alt text-3xl text-gray-300 mb-2 block"></i><p class="font-bold text-sm mb-1">Klik atau drag file di sini</p></div></div>
+      <div><label class="form-label">Sisipkan URL Web <span class="text-gray-400">(opsional)</span></label><input id="up-url" type="url" class="form-input" placeholder="https://..."></div>
+      <div><label class="form-label">Thumbnail / Icon</label><div class="flex items-center gap-3"><div class="w-16 h-16 rounded-xl bg-gray-100"><img id="thumb-preview" class="hidden"></div><input type="file" accept="image/*" onchange="handleThumbFile(this)"></div></div>
     </div>
-    <div class="flex gap-3 mt-6">
-      <button onclick="closeModal('modal-upload')" class="flex-1 border-2 border-gray-200 py-3 rounded-xl font-bold hover:bg-gray-50">Batal</button>
-      <button onclick="submitUpload()" class="flex-1 bg-black text-white py-3 rounded-xl font-bold hover:bg-zinc-800">Upload</button>
-    </div>
+    <div class="flex gap-3 mt-6"><button onclick="closeModal('modal-upload')" class="flex-1 border-2 py-3 rounded-xl">Batal</button><button onclick="submitUpload()" class="flex-1 bg-black text-white py-3 rounded-xl">Upload</button></div>
   </div>
 </div>
 
-<div id="modal-link" class="modal-backdrop fixed inset-0 bg-black/50 z-50 hidden items-center justify-center" onclick="closeModalBackdrop(event,'modal-link')">
-  <div class="modal-box bg-white rounded-2xl max-w-lg w-full mx-4 p-6 relative" onclick="event.stopPropagation()">
+<div id="modal-link" class="modal-backdrop" onclick="closeModalBackdrop(event,'modal-link')">
+  <div class="modal-box">
     <button onclick="closeModal('modal-link')" class="absolute top-4 right-4 text-gray-400 hover:text-black"><i class="fas fa-times text-lg"></i></button>
     <h2 class="text-2xl font-bold mb-1">Tambah Link Web</h2>
-    <p class="text-sm text-gray-400 mb-6">Simpan referensi website atau proyek</p>
     <div class="space-y-4">
-      <div><label class="form-label block text-sm font-bold mb-1">Judul Link *</label><input id="lk-title" type="text" class="form-input w-full border border-gray-300 rounded-xl p-3"></div>
-      <div><label class="form-label block text-sm font-bold mb-1">URL *</label><input id="lk-url" type="url" class="form-input w-full border border-gray-300 rounded-xl p-3"></div>
-      <div><label class="form-label block text-sm font-bold mb-1">Kategori</label><select id="lk-category" class="form-input w-full border border-gray-300 rounded-xl p-3"></select></div>
-      <div><label class="form-label block text-sm font-bold mb-1">Deskripsi</label><textarea id="lk-desc" class="form-input w-full border border-gray-300 rounded-xl p-3" rows="2"></textarea></div>
-      <div><label class="form-label block text-sm font-bold mb-1">Status</label><select id="lk-status" class="form-input w-full border border-gray-300 rounded-xl p-3"><option value="active">Aktif / Live</option><option value="development">Development</option><option value="archived">Arsip</option></select></div>
+      <div><label class="form-label">Judul Link *</label><input id="lk-title" type="text" class="form-input"></div>
+      <div><label class="form-label">URL *</label><input id="lk-url" type="url" class="form-input"></div>
+      <div><label class="form-label">Kategori</label><select id="lk-category" class="form-input"></select></div>
+      <div><label class="form-label">Deskripsi</label><textarea id="lk-desc" class="form-input" rows="2"></textarea></div>
+      <div><label class="form-label">Status</label><select id="lk-status" class="form-input"><option value="active">Aktif</option><option value="development">Development</option></select></div>
     </div>
-    <div class="flex gap-3 mt-6">
-      <button onclick="closeModal('modal-link')" class="flex-1 border-2 border-gray-200 py-3 rounded-xl font-bold">Batal</button>
-      <button onclick="submitLink()" class="flex-1 bg-black text-white py-3 rounded-xl font-bold">Simpan Link</button>
-    </div>
+    <div class="flex gap-3 mt-6"><button onclick="closeModal('modal-link')" class="flex-1 border-2 py-3 rounded-xl">Batal</button><button onclick="submitLink()" class="flex-1 bg-black text-white py-3 rounded-xl">Simpan</button></div>
   </div>
 </div>
 
-<div id="modal-editprofil" class="modal-backdrop fixed inset-0 bg-black/50 z-50 hidden items-center justify-center" onclick="closeModalBackdrop(event,'modal-editprofil')">
-  <div class="modal-box bg-white rounded-2xl max-w-lg w-full mx-4 p-6 relative" onclick="event.stopPropagation()">
+<div id="modal-editprofil" class="modal-backdrop" onclick="closeModalBackdrop(event,'modal-editprofil')">
+  <div class="modal-box">
     <button onclick="closeModal('modal-editprofil')" class="absolute top-4 right-4 text-gray-400 hover:text-black"><i class="fas fa-times text-lg"></i></button>
     <h2 class="text-2xl font-bold mb-5">Edit Profil</h2>
     <div class="space-y-4">
-      <div class="grid grid-cols-2 gap-3">
-        <div><label class="form-label block text-sm font-bold mb-1">Nama Lengkap</label><input id="ep-name" type="text" class="form-input w-full border border-gray-300 rounded-xl p-3"></div>
-        <div><label class="form-label block text-sm font-bold mb-1">Username</label><input id="ep-username" type="text" class="form-input w-full border border-gray-300 rounded-xl p-3"></div>
-      </div>
-      <div><label class="form-label block text-sm font-bold mb-1">Bio</label><textarea id="ep-bio" class="form-input w-full border border-gray-300 rounded-xl p-3" rows="2"></textarea></div>
-      <div><label class="form-label block text-sm font-bold mb-1">Lokasi</label><input id="ep-location" type="text" class="form-input w-full border border-gray-300 rounded-xl p-3"></div>
-      <div><label class="form-label block text-sm font-bold mb-1">Pekerjaan</label><input id="ep-occupation" type="text" class="form-input w-full border border-gray-300 rounded-xl p-3"></div>
-      <div><label class="form-label block text-sm font-bold mb-1">Tech Stack</label><input id="ep-techstack" type="text" class="form-input w-full border border-gray-300 rounded-xl p-3"></div>
-      <div><label class="form-label block text-sm font-bold mb-1">Minat</label><input id="ep-interests" type="text" class="form-input w-full border border-gray-300 rounded-xl p-3"></div>
+      <div class="grid grid-cols-2 gap-3"><div><label class="form-label">Nama Lengkap</label><input id="ep-name" type="text" class="form-input"></div><div><label class="form-label">Username</label><input id="ep-username" type="text" class="form-input"></div></div>
+      <div><label class="form-label">Bio</label><textarea id="ep-bio" class="form-input" rows="2"></textarea></div>
+      <div><label class="form-label">Lokasi</label><input id="ep-location" type="text" class="form-input"></div>
+      <div><label class="form-label">Pekerjaan</label><input id="ep-occupation" type="text" class="form-input"></div>
+      <div><label class="form-label">Tech Stack</label><input id="ep-techstack" type="text" class="form-input"></div>
+      <div><label class="form-label">Minat</label><input id="ep-interests" type="text" class="form-input"></div>
     </div>
-    <div class="flex gap-3 mt-6">
-      <button onclick="closeModal('modal-editprofil')" class="flex-1 border-2 border-gray-200 py-3 rounded-xl font-bold">Batal</button>
-      <button onclick="saveEditProfil()" class="flex-1 bg-black text-white py-3 rounded-xl font-bold">Simpan</button>
-    </div>
+    <div class="flex gap-3 mt-6"><button onclick="closeModal('modal-editprofil')" class="flex-1 border-2 py-3 rounded-xl">Batal</button><button onclick="saveEditProfil()" class="flex-1 bg-black text-white py-3 rounded-xl">Simpan</button></div>
   </div>
 </div>
 
-<div id="modal-edit-konten" class="modal-backdrop fixed inset-0 bg-black/50 z-50 hidden items-center justify-center" onclick="closeModalBackdrop(event,'modal-edit-konten')">
-  <div class="modal-box bg-white rounded-2xl max-w-lg w-full mx-4 p-6 relative" onclick="event.stopPropagation()">
+<div id="modal-edit-konten" class="modal-backdrop" onclick="closeModalBackdrop(event,'modal-edit-konten')">
+  <div class="modal-box">
     <button onclick="closeModal('modal-edit-konten')" class="absolute top-4 right-4 text-gray-400 hover:text-black"><i class="fas fa-times text-lg"></i></button>
     <h2 class="text-2xl font-bold mb-1">Edit Konten</h2>
-    <p class="text-sm text-gray-400 mb-6">Perbarui informasi konten</p>
     <input type="hidden" id="edit-konten-id">
     <div class="space-y-4">
-      <div><label class="form-label block text-sm font-bold mb-1">Judul Konten *</label><input id="edit-konten-title" type="text" class="form-input w-full border border-gray-300 rounded-xl p-3"></div>
-      <div><label class="form-label block text-sm font-bold mb-1">Kategori</label><select id="edit-konten-category" class="form-input w-full border border-gray-300 rounded-xl p-3"></select></div>
-      <div><label class="form-label block text-sm font-bold mb-1">Deskripsi</label><textarea id="edit-konten-desc" class="form-input w-full border border-gray-300 rounded-xl p-3" rows="3"></textarea></div>
-      <div><label class="form-label block text-sm font-bold mb-1">URL Web</label><input id="edit-konten-url" type="url" class="form-input w-full border border-gray-300 rounded-xl p-3"></div>
+      <div><label class="form-label">Judul Konten *</label><input id="edit-konten-title" type="text" class="form-input"></div>
+      <div><label class="form-label">Kategori</label><select id="edit-konten-category" class="form-input"></select></div>
+      <div><label class="form-label">Deskripsi</label><textarea id="edit-konten-desc" class="form-input" rows="3"></textarea></div>
+      <div><label class="form-label">URL Web</label><input id="edit-konten-url" type="url" class="form-input"></div>
     </div>
-    <div class="flex gap-3 mt-6">
-      <button onclick="closeModal('modal-edit-konten')" class="flex-1 border-2 border-gray-200 py-3 rounded-xl font-bold">Batal</button>
-      <button onclick="saveEditKonten()" class="flex-1 bg-black text-white py-3 rounded-xl font-bold">Simpan</button>
-    </div>
+    <div class="flex gap-3 mt-6"><button onclick="closeModal('modal-edit-konten')" class="flex-1 border-2 py-3 rounded-xl">Batal</button><button onclick="saveEditKonten()" class="flex-1 bg-black text-white py-3 rounded-xl">Simpan</button></div>
   </div>
 </div>
 
@@ -325,329 +313,5 @@
 <div id="toast" class="fixed bottom-4 right-4 z-50"></div>
 
 <script src="js/menu.js"></script>
-
-<!-- SCRIPT KHUSUS UNTUK HALAMAN PROFIL -->
-<script>
-// Variabel untuk menyimpan data user
-let currentUser = null;
-let currentProfile = null;
-let userContents = [];
-let userPosts = [];
-
-// Toast notification
-function showToast(msg, isError = false) {
-  const toast = document.getElementById('toast');
-  toast.innerHTML = `<div class="bg-black text-white px-4 py-2 rounded-lg shadow-lg text-sm ${isError ? 'bg-red-500' : ''}">${msg}</div>`;
-  setTimeout(() => { toast.innerHTML = ''; }, 2500);
-}
-
-// Load data dari Supabase
-async function loadProfileData() {
-  if (!window._SB) {
-    setTimeout(loadProfileData, 500);
-    return;
-  }
-  
-  // Ambil user yang login
-  currentUser = await window._SB.getCurrentUser();
-  if (!currentUser) {
-    window.location.href = 'auth.html';
-    return;
-  }
-  
-  // Ambil profile dari tabel users
-  const { data: profile } = await window._SB.supabase
-    .from('users')
-    .select('*')
-    .eq('auth_id', currentUser.id)
-    .single();
-  
-  currentProfile = profile;
-  
-  // Ambil konten user
-  const { data: contents } = await window._SB.supabase
-    .from('contents')
-    .select('*')
-    .eq('user_id', currentUser.id)
-    .order('created_at', { ascending: false });
-  
-  userContents = contents || [];
-  
-  // Ambil posts user
-  const { data: posts } = await window._SB.supabase
-    .from('posts')
-    .select('*, users(username, avatar_url)')
-    .eq('user_id', currentUser.id)
-    .order('created_at', { ascending: false });
-  
-  userPosts = posts || [];
-  
-  // Update UI
-  updateProfileUI();
-  updateStatsUI();
-  renderUserContents();
-  renderUserPosts();
-  renderRecentUploads();
-  populateCategories();
-}
-
-function updateProfileUI() {
-  if (!currentProfile) return;
-  
-  document.getElementById('profil-name').textContent = currentProfile.full_name || currentProfile.username || 'User';
-  document.getElementById('profil-username').textContent = '@' + (currentProfile.username || 'user');
-  document.getElementById('profil-bio').textContent = currentProfile.bio || 'Tidak ada bio';
-  document.getElementById('info-location').textContent = currentProfile.location || 'Tidak disebutkan';
-  document.getElementById('info-occupation').textContent = currentProfile.occupation || 'Tidak disebutkan';
-  document.getElementById('info-techstack').textContent = currentProfile.tech_stack || 'Tidak disebutkan';
-  document.getElementById('info-interests').textContent = currentProfile.interests || 'Tidak disebutkan';
-  
-  // Avatar
-  const initial = (currentProfile.full_name || currentProfile.username || 'U')[0].toUpperCase();
-  if (currentProfile.avatar_url) {
-    document.getElementById('avatar-img').src = currentProfile.avatar_url;
-    document.getElementById('avatar-img').classList.remove('hidden');
-    document.getElementById('avatar-initial').classList.add('hidden');
-  } else {
-    document.getElementById('avatar-initial').textContent = initial;
-    document.getElementById('avatar-initial').classList.remove('hidden');
-    document.getElementById('avatar-img').classList.add('hidden');
-  }
-  
-  // Cover
-  if (currentProfile.cover_url) {
-    document.getElementById('cover-img').src = currentProfile.cover_url;
-    document.getElementById('cover-img').classList.remove('hidden');
-  }
-}
-
-function updateStatsUI() {
-  document.getElementById('stat-followers').textContent = currentProfile?.followers_count || 0;
-  document.getElementById('stat-following').textContent = currentProfile?.following_count || 0;
-  document.getElementById('stat-posts').textContent = userContents.length;
-  document.getElementById('stat-likes-total').textContent = userContents.reduce((sum, c) => sum + (c.likes || 0), 0);
-  document.getElementById('stat-comments').textContent = userPosts.reduce((sum, p) => sum + (p.comments_count || 0), 0);
-  document.getElementById('stat-shares').textContent = userPosts.reduce((sum, p) => sum + (p.shares_count || 0), 0);
-}
-
-function renderUserContents() {
-  const grid = document.getElementById('profil-konten-grid');
-  if (!userContents.length) {
-    grid.innerHTML = `<div class="col-span-4 text-center py-12 text-gray-400"><i class="fas fa-folder-open text-4xl mb-2 block"></i><p>Belum ada konten</p></div>`;
-    return;
-  }
-  
-  grid.innerHTML = userContents.map(c => `
-    <div class="group bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-md transition">
-      <div class="aspect-video bg-gray-100 relative overflow-hidden">
-        ${c.preview_image ? `<img src="${c.preview_image}" class="w-full h-full object-cover group-hover:scale-105 transition">` : `<div class="w-full h-full flex items-center justify-center"><i class="fas fa-file-alt text-3xl text-gray-300"></i></div>`}
-        <button onclick="deleteContent('${c.id}')" class="absolute top-2 right-2 bg-black/70 text-white p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition text-xs">
-          <i class="fas fa-trash"></i>
-        </button>
-      </div>
-      <div class="p-3">
-        <h4 class="font-bold text-sm truncate">${c.name || 'Untitled'}</h4>
-        <p class="text-xs text-gray-400 mt-1">${new Date(c.created_at).toLocaleDateString('id-ID')}</p>
-      </div>
-    </div>
-  `).join('');
-}
-
-function renderUserPosts() {
-  const container = document.getElementById('profil-activity');
-  if (!userPosts.length) {
-    container.innerHTML = `<div class="text-center py-12 text-gray-400"><i class="fas fa-comment-slash text-4xl mb-2 block"></i><p>Belum ada diskusi</p></div>`;
-    return;
-  }
-  
-  container.innerHTML = userPosts.map(p => `
-    <div class="bg-gray-50 rounded-xl p-4 mb-3">
-      <p class="text-gray-700 text-sm">${p.content}</p>
-      <div class="flex items-center gap-4 mt-3 text-xs text-gray-400">
-        <span><i class="fas fa-heart mr-1"></i>${p.likes_count || 0}</span>
-        <span><i class="fas fa-comment mr-1"></i>${p.comments_count || 0}</span>
-        <span>${new Date(p.created_at).toLocaleDateString('id-ID')}</span>
-        <button onclick="deletePost('${p.id}')" class="text-red-400 hover:text-red-600"><i class="fas fa-trash"></i> Hapus</button>
-      </div>
-    </div>
-  `).join('');
-}
-
-function renderRecentUploads() {
-  const container = document.getElementById('recent-uploads');
-  const recent = userContents.slice(0, 3);
-  if (!recent.length) {
-    container.innerHTML = '<p class="text-xs text-gray-400">Belum ada upload</p>';
-    return;
-  }
-  container.innerHTML = recent.map(c => `
-    <div class="flex items-center gap-2 text-xs">
-      <i class="fas fa-file-alt text-gray-400"></i>
-      <span class="truncate flex-1">${c.name}</span>
-    </div>
-  `).join('');
-}
-
-async function populateCategories() {
-  const { data: cats } = await window._SB.supabase.from('categories').select('*');
-  const options = (cats || []).map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-  document.getElementById('up-category').innerHTML = '<option value="">Pilih kategori...</option>' + options;
-  document.getElementById('lk-category').innerHTML = '<option value="">Pilih kategori...</option>' + options;
-  document.getElementById('edit-konten-category').innerHTML = '<option value="">Pilih kategori...</option>' + options;
-}
-
-// Upload functions
-async function uploadAvatar(input) {
-  if (!input.files[0]) return;
-  showToast('Mengupload...');
-  const file = input.files[0];
-  const ext = file.name.split('.').pop();
-  const path = `${currentUser.id}/avatar.${ext}`;
-  
-  const { error } = await window._SB.supabase.storage.from('avatars').upload(path, file, { upsert: true });
-  if (error) { showToast('Gagal upload', true); return; }
-  
-  const { data: { publicUrl } } = window._SB.supabase.storage.from('avatars').getPublicUrl(path);
-  await window._SB.supabase.from('users').update({ avatar_url: publicUrl }).eq('auth_id', currentUser.id);
-  
-  showToast('Avatar berhasil diubah');
-  loadProfileData();
-}
-
-async function uploadCover(input) {
-  if (!input.files[0]) return;
-  showToast('Mengupload...');
-  const file = input.files[0];
-  const ext = file.name.split('.').pop();
-  const path = `${currentUser.id}/cover.${ext}`;
-  
-  const { error } = await window._SB.supabase.storage.from('avatars').upload(path, file, { upsert: true });
-  if (error) { showToast('Gagal upload', true); return; }
-  
-  const { data: { publicUrl } } = window._SB.supabase.storage.from('avatars').getPublicUrl(path);
-  await window._SB.supabase.from('users').update({ cover_url: publicUrl }).eq('auth_id', currentUser.id);
-  
-  showToast('Cover berhasil diubah');
-  loadProfileData();
-}
-
-async function saveEditProfil() {
-  const updates = {
-    full_name: document.getElementById('ep-name').value,
-    username: document.getElementById('ep-username').value,
-    bio: document.getElementById('ep-bio').value,
-    location: document.getElementById('ep-location').value,
-    occupation: document.getElementById('ep-occupation').value,
-    tech_stack: document.getElementById('ep-techstack').value,
-    interests: document.getElementById('ep-interests').value
-  };
-  
-  await window._SB.supabase.from('users').update(updates).eq('auth_id', currentUser.id);
-  showToast('Profil berhasil diperbarui');
-  closeModal('modal-editprofil');
-  loadProfileData();
-}
-
-async function deleteContent(contentId) {
-  if (!confirm('Hapus konten ini?')) return;
-  await window._SB.supabase.from('contents').delete().eq('id', contentId);
-  showToast('Konten dihapus');
-  loadProfileData();
-}
-
-async function deletePost(postId) {
-  if (!confirm('Hapus postingan ini?')) return;
-  await window._SB.supabase.from('posts').delete().eq('id', postId);
-  showToast('Postingan dihapus');
-  loadProfileData();
-}
-
-function openEditProfil() {
-  document.getElementById('ep-name').value = currentProfile?.full_name || '';
-  document.getElementById('ep-username').value = currentProfile?.username || '';
-  document.getElementById('ep-bio').value = currentProfile?.bio || '';
-  document.getElementById('ep-location').value = currentProfile?.location || '';
-  document.getElementById('ep-occupation').value = currentProfile?.occupation || '';
-  document.getElementById('ep-techstack').value = currentProfile?.tech_stack || '';
-  document.getElementById('ep-interests').value = currentProfile?.interests || '';
-  openModal('modal-editprofil');
-}
-
-function openUploadModal() { openModal('modal-upload'); }
-function openLinkModal() { openModal('modal-link'); }
-function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
-function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
-function closeModalBackdrop(e, id) { if (e.target === e.currentTarget) closeModal(id); }
-
-function setUploadTab(tab) {
-  const kontenPanel = document.getElementById('upload-konten-panel');
-  const linkPanel = document.getElementById('upload-linkweb-panel');
-  const kontenTab = document.getElementById('tab-konten');
-  const linkTab = document.getElementById('tab-linkweb');
-  
-  if (tab === 'konten') {
-    kontenPanel.classList.remove('hidden');
-    linkPanel.classList.add('hidden');
-    kontenTab.classList.add('active', 'bg-black', 'text-white');
-    kontenTab.classList.remove('text-gray-500');
-    linkTab.classList.remove('active', 'bg-black', 'text-white');
-    linkTab.classList.add('text-gray-500');
-  } else {
-    linkPanel.classList.remove('hidden');
-    kontenPanel.classList.add('hidden');
-    linkTab.classList.add('active', 'bg-black', 'text-white');
-    linkTab.classList.remove('text-gray-500');
-    kontenTab.classList.remove('active', 'bg-black', 'text-white');
-    kontenTab.classList.add('text-gray-500');
-  }
-}
-
-function switchProfilTab(tab) {
-  const kontenPanel = document.getElementById('profil-panel-konten');
-  const diskusiPanel = document.getElementById('profil-panel-diskusi');
-  const kontenBtn = document.getElementById('profil-tab-konten');
-  const diskusiBtn = document.getElementById('profil-tab-diskusi');
-  
-  if (tab === 'konten') {
-    kontenPanel.classList.remove('hidden');
-    diskusiPanel.classList.add('hidden');
-    kontenBtn.classList.add('text-black', 'border-black');
-    kontenBtn.classList.remove('text-gray-400', 'border-transparent');
-    diskusiBtn.classList.remove('text-black', 'border-black');
-    diskusiBtn.classList.add('text-gray-400', 'border-transparent');
-  } else {
-    diskusiPanel.classList.remove('hidden');
-    kontenPanel.classList.add('hidden');
-    diskusiBtn.classList.add('text-black', 'border-black');
-    diskusiBtn.classList.remove('text-gray-400', 'border-transparent');
-    kontenBtn.classList.remove('text-black', 'border-black');
-    kontenBtn.classList.add('text-gray-400', 'border-transparent');
-  }
-}
-
-function handleMiniFile(input) {
-  if (input.files[0]) {
-    document.getElementById('mini-file-preview').classList.remove('hidden');
-    document.getElementById('mini-file-name').textContent = input.files[0].name;
-    document.getElementById('mini-file-size').textContent = (input.files[0].size / 1024).toFixed(1) + ' KB';
-  }
-}
-
-function clearMiniFile() {
-  document.getElementById('mini-file-preview').classList.add('hidden');
-  document.getElementById('mini-file').value = '';
-}
-
-function submitUpload() { showToast('Fitur upload akan segera hadir'); closeModal('modal-upload'); }
-function submitLink() { showToast('Fitur link akan segera hadir'); closeModal('modal-link'); }
-function saveEditKonten() { showToast('Fitur edit akan segera hadir'); closeModal('modal-edit-konten'); }
-function handleSearch(q) { if(q) showToast('Pencarian: ' + q); }
-function toggleMobileSearch() { document.getElementById('mobile-search-bar').classList.toggle('hidden'); }
-function toggleSidebar() { document.getElementById('sidebar').classList.toggle('-translate-x-full'); document.getElementById('overlay').classList.toggle('hidden'); }
-async function logout() { await window._SB?.supabase.auth.signOut(); window.location.href = 'auth.html'; }
-
-// Start
-loadProfileData();
-</script>
 </body>
 </html>
