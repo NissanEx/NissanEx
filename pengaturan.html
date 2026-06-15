@@ -795,6 +795,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 })();
+document.addEventListener('DOMContentLoaded', function() {
+  // Fungsi render sesuai halaman
+  const renderMap = {
+    'index.html': 'renderBeranda',
+    'kategori.html': 'renderKategori',
+    'tren.html': 'renderTren',
+    'diskusi.html': 'renderDiskusi',
+    'disimpan.html': 'renderDisimpan',
+    'profil.html': 'renderProfil',
+    'pengaturan.html': 'renderPengaturan'
+  };
+  const page = window.location.pathname.split('/').pop();
+  const fnName = renderMap[page];
+  if (fnName && typeof window[fnName] === 'function') {
+    // Tunggu sedikit agar data siap
+    setTimeout(() => window[fnName](), 500);
+  }
+});
 </script>
 
 </body>
