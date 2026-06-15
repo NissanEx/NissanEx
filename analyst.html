@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Analyst Project — Nissan Ex</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/menu.css">
+<script type="module" src="supabase.js"></script>
+</head>
+<body class="flex min-h-screen">
+
+<!-- SIDEBAR (sama) -->
+<aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-64 bg-black text-white transform -translate-x-full lg:translate-x-0 transition-transform duration-300 shadow-2xl flex flex-col">
+  <div class="p-6 flex items-center gap-3">
+    <div class="w-9 h-9 bg-white rounded-xl flex items-center justify-center">
+      <span class="text-black font-bold text-lg leading-none">N</span>
+    </div>
+    <h1 class="text-xl font-bold tracking-tight brand-lora">Nissan Ex</h1>
+  </div>
+  <nav class="mt-2 px-4 space-y-1 flex-1">
+    <a href="index.html" class="nav-link w-full flex items-center p-3 rounded-xl hover:bg-white/10 transition gap-3 text-sm">
+      <i class="fas fa-home w-5 text-center"></i><span>Beranda</span>
+    </a>
+    <a href="kategori.html" class="nav-link w-full flex items-center p-3 rounded-xl hover:bg-white/10 transition gap-3 text-sm">
+      <i class="fas fa-th-large w-5 text-center"></i><span>Kategori</span>
+    </a>
+    <a href="tren.html" class="nav-link w-full flex items-center p-3 rounded-xl hover:bg-white/10 transition gap-3 text-sm">
+      <i class="fas fa-chart-line w-5 text-center"></i><span>Tren</span>
+    </a>
+    <a href="disimpan.html" class="nav-link w-full flex items-center p-3 rounded-xl hover:bg-white/10 transition gap-3 text-sm">
+      <i class="fas fa-bookmark w-5 text-center"></i><span>Disimpan</span>
+    </a>
+    <a href="diskusi.html" class="nav-link w-full flex items-center p-3 rounded-xl hover:bg-white/10 transition gap-3 text-sm">
+      <i class="fas fa-comments w-5 text-center"></i><span>Diskusi</span>
+    </a>
+    <a href="analyst.html" class="nav-link active w-full flex items-center p-3 rounded-xl hover:bg-white/10 transition gap-3 text-sm">
+      <i class="fas fa-chart-bar w-5 text-center"></i><span>Analyst Project</span>
+    </a>
+  </nav>
+  <div class="px-4 pb-6 border-t border-white/10 pt-4">
+    <a href="pengaturan.html" class="nav-link w-full flex items-center p-3 rounded-xl hover:bg-white/10 transition gap-3 text-sm text-gray-400">
+      <i class="fas fa-cog w-5 text-center"></i><span>Pengaturan</span>
+    </a>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="flex-1 lg:ml-64 p-4 md:p-8 min-h-screen">
+  <header class="mb-8">
+    <div class="lg:hidden flex items-center justify-between gap-4 mb-4">
+      <button onclick="toggleSidebar()" class="p-2 text-black"><i class="fas fa-bars text-xl"></i></button>
+      <span class="text-lg font-bold brand-lora">Nissan Ex</span>
+      <a href="profil.html" class="p-2"><i class="fas fa-user-circle text-xl"></i></a>
+    </div>
+    <div class="hidden lg:flex items-center justify-end">
+      <a href="profil.html" class="p-3 hover:bg-gray-200 rounded-xl transition">
+        <i class="fas fa-user-circle text-2xl text-black"></i>
+      </a>
+    </div>
+  </header>
+
+  <!-- KONTEN ANALYST -->
+  <div class="grid md:grid-cols-2 gap-6">
+    <!-- Projects -->
+    <div class="bg-white rounded-[2rem] shadow-xl border border-gray-100 p-8">
+      <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center gap-3">
+          <i class="fas fa-rocket text-2xl text-black"></i>
+          <h2 class="text-2xl font-bold tracking-tight">Deploy Project</h2>
+        </div>
+        <button onclick="openProjectModal()" class="bg-black text-white px-4 py-2 rounded-xl font-bold text-xs hover:bg-zinc-800 transition flex items-center gap-2">
+          <i class="fas fa-plus"></i> Tambah
+        </button>
+      </div>
+      <div id="projects-list" class="space-y-3"></div>
+      <div class="border-t border-gray-100 pt-5 mt-5">
+        <h3 class="text-sm font-bold text-black mb-3 uppercase tracking-widest">Analytics</h3>
+        <div class="grid grid-cols-2 gap-3">
+          <div class="bg-gray-50 rounded-xl p-3 text-center">
+            <p class="text-2xl font-bold text-black" id="stat-visits">0</p>
+            <p class="text-xs text-gray-500 mt-1">Total Visits</p>
+          </div>
+          <div class="bg-gray-50 rounded-xl p-3 text-center">
+            <p class="text-2xl font-bold text-black" id="stat-uptime">—</p>
+            <p class="text-xs text-gray-500 mt-1">Avg Uptime</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Performance -->
+    <div class="bg-white rounded-[2rem] shadow-xl border border-gray-100 p-8">
+      <h2 class="text-2xl font-bold tracking-tight mb-6">Project Performance</h2>
+      <div id="perf-list" class="space-y-4"></div>
+      <div class="border-t border-gray-100 pt-5 mt-5">
+        <div class="grid grid-cols-2 gap-3">
+          <div class="bg-gray-50 rounded-xl p-3">
+            <p class="text-2xl font-bold text-black" id="stat-total">0</p>
+            <p class="text-xs text-gray-500 mt-1">Total Project</p>
+          </div>
+          <div class="bg-gray-50 rounded-xl p-3">
+            <p class="text-2xl font-bold text-black" id="stat-live">0</p>
+            <p class="text-xs text-gray-500 mt-1">Deployed</p>
+          </div>
+          <div class="bg-gray-50 rounded-xl p-3">
+            <p class="text-2xl font-bold text-black" id="stat-dev">0</p>
+            <p class="text-xs text-gray-500 mt-1">Development</p>
+          </div>
+          <div class="bg-gray-50 rounded-xl p-3">
+            <p class="text-2xl font-bold text-black" id="stat-avgperf">—</p>
+            <p class="text-xs text-gray-500 mt-1">Avg Performance</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- MODALS -->
+<div id="modal-project" class="modal-backdrop" onclick="closeModalBackdrop(event,'modal-project')">
+  <div class="modal-box">
+    <button onclick="closeModal('modal-project')" class="absolute top-4 right-4 text-gray-400 hover:text-black"><i class="fas fa-times text-lg"></i></button>
+    <h2 class="text-2xl font-bold mb-5">Tambah Project</h2>
+    <div class="space-y-4">
+      <div><label class="form-label">Nama Project *</label><input id="proj-name" type="text" class="form-input"></div>
+      <div><label class="form-label">Deskripsi</label><input id="proj-desc" type="text" class="form-input"></div>
+      <div><label class="form-label">Deploy URL</label><input id="proj-url" type="url" class="form-input"></div>
+      <div><label class="form-label">Tech Stack</label><input id="proj-tech" type="text" class="form-input"></div>
+      <div><label class="form-label">Status</label>
+        <select id="proj-status" class="form-input">
+          <option value="live">Live</option><option value="development">Development</option><option value="archived">Archived</option>
+        </select>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="form-label">Performance (%)</label><input id="proj-perf" type="number" class="form-input"></div>
+        <div><label class="form-label">Uptime (%)</label><input id="proj-uptime" type="number" class="form-input"></div>
+      </div>
+    </div>
+    <div class="flex gap-3 mt-6">
+      <button onclick="closeModal('modal-project')" class="flex-1 border-2 border-gray-200 py-3 rounded-xl font-bold">Batal</button>
+      <button onclick="submitProject()" class="flex-1 bg-black text-white py-3 rounded-xl font-bold">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<div id="overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/60 z-40 hidden lg:hidden"></div>
+<div id="toast"></div>
+
+<script src="js/menu.js"></script>
+</body>
+</html>

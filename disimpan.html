@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Disimpan — Nissan Ex</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/menu.css">
+<script type="module" src="supabase.js"></script>
+</head>
+<body class="flex min-h-screen">
+
+<!-- ===== SIDEBAR ===== -->
+<aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-64 bg-black text-white transform -translate-x-full lg:translate-x-0 transition-transform duration-300 shadow-2xl flex flex-col">
+  <div class="p-6 flex items-center gap-3">
+    <div class="w-9 h-9 bg-white rounded-xl flex items-center justify-center">
+      <span class="text-black font-bold text-lg leading-none">N</span>
+    </div>
+    <h1 class="text-xl font-bold tracking-tight brand-lora">Nissan Ex</h1>
+  </div>
+  <nav class="mt-2 px-4 space-y-1 flex-1">
+    <a href="index.html" class="nav-link w-full flex items-center p-3 rounded-xl hover:bg-white/10 transition gap-3 text-sm">
+      <i class="fas fa-home w-5 text-center"></i><span>Beranda</span>
+    </a>
+    <a href="kategori.html" class="nav-link w-full flex items-center p-3 rounded-xl hover:bg-white/10 transition gap-3 text-sm">
+      <i class="fas fa-th-large w-5 text-center"></i><span>Kategori</span>
+    </a>
+    <a href="tren.html" class="nav-link w-full flex items-center p-3 rounded-xl hover:bg-white/10 transition gap-3 text-sm">
+      <i class="fas fa-chart-line w-5 text-center"></i><span>Tren</span>
+    </a>
+    <a href="disimpan.html" class="nav-link active w-full flex items-center p-3 rounded-xl hover:bg-white/10 transition gap-3 text-sm">
+      <i class="fas fa-bookmark w-5 text-center"></i><span>Disimpan</span>
+    </a>
+    <a href="diskusi.html" class="nav-link w-full flex items-center p-3 rounded-xl hover:bg-white/10 transition gap-3 text-sm">
+      <i class="fas fa-comments w-5 text-center"></i><span>Diskusi</span>
+    </a>
+    <a href="analyst.html" class="nav-link w-full flex items-center p-3 rounded-xl hover:bg-white/10 transition gap-3 text-sm">
+      <i class="fas fa-chart-bar w-5 text-center"></i><span>Analyst Project</span>
+    </a>
+  </nav>
+  <div class="px-4 pb-6 border-t border-white/10 pt-4">
+    <a href="pengaturan.html" class="nav-link w-full flex items-center p-3 rounded-xl hover:bg-white/10 transition gap-3 text-sm text-gray-400">
+      <i class="fas fa-cog w-5 text-center"></i><span>Pengaturan</span>
+    </a>
+    <button onclick="logout()" class="mt-2 w-full flex items-center p-3 rounded-xl hover:bg-white/10 transition gap-3 text-sm text-red-400">
+      <i class="fas fa-sign-out-alt w-5 text-center"></i><span>Keluar</span>
+    </button>
+  </div>
+</aside>
+
+<!-- ===== MAIN ===== -->
+<main class="flex-1 lg:ml-64 p-4 md:p-8 min-h-screen">
+
+  <!-- HEADER -->
+  <header class="mb-8">
+    <div class="lg:hidden flex items-center justify-between gap-4 mb-4">
+      <div class="flex items-center gap-3">
+        <button onclick="toggleSidebar()" class="p-2 text-black"><i class="fas fa-bars text-xl"></i></button>
+        <span class="text-lg font-bold brand-lora">Nissan Ex</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="toggleMobileSearch()" class="p-2"><i class="fas fa-search text-xl"></i></button>
+        <a href="profil.html" class="p-2"><i class="fas fa-user-circle text-xl"></i></a>
+      </div>
+    </div>
+    <div id="mobile-search-bar" class="hidden lg:hidden mb-4">
+      <div class="relative">
+        <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-500"><i class="fas fa-search"></i></span>
+        <input type="text" oninput="handleSearch(this.value)" placeholder="Cari konten tersimpan..." class="w-full bg-black text-white py-3 pl-12 pr-4 rounded-2xl outline-none placeholder:text-gray-500 text-sm">
+      </div>
+    </div>
+    <div class="hidden lg:flex items-center gap-4">
+      <div class="flex-1 relative">
+        <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-500"><i class="fas fa-search"></i></span>
+        <input id="global-search" type="text" oninput="handleSearch(this.value)" placeholder="Cari konten tersimpan..." class="w-full bg-black text-white py-3.5 pl-12 pr-4 rounded-2xl focus:ring-2 focus:ring-gray-700 outline-none placeholder:text-gray-500">
+      </div>
+      <a href="profil.html" class="p-3 hover:bg-gray-200 rounded-xl transition">
+        <i class="fas fa-user-circle text-2xl text-black"></i>
+      </a>
+    </div>
+    <div id="search-results" class="hidden absolute z-50 bg-white rounded-2xl shadow-2xl border border-gray-100 mt-1 w-full max-w-2xl"></div>
+  </header>
+
+  <!-- ===== KONTEN DISIMPAN ===== -->
+  <div class="flex items-center justify-between mb-8">
+    <div>
+      <h2 class="text-3xl font-bold">Koleksi Disimpan</h2>
+      <p class="text-gray-500 mt-1">Konten dan link yang kamu simpan</p>
+    </div>
+    <div class="flex gap-2">
+      <button onclick="filterSaved('semua')" id="filter-semua" class="px-4 py-2 rounded-xl text-sm font-bold bg-black text-white transition">Semua</button>
+      <button onclick="filterSaved('konten')" id="filter-konten" class="px-4 py-2 rounded-xl text-sm font-bold bg-gray-100 text-gray-600 hover:bg-gray-200 transition">Konten</button>
+      <button onclick="filterSaved('link')" id="filter-link" class="px-4 py-2 rounded-xl text-sm font-bold bg-gray-100 text-gray-600 hover:bg-gray-200 transition">Link Web</button>
+    </div>
+  </div>
+
+  <!-- Saved Content Grid -->
+  <div id="disimpan-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"></div>
+
+  <!-- Empty State -->
+  <div id="disimpan-empty" class="hidden text-center py-20">
+    <div class="bg-white rounded-[2rem] shadow-xl border border-gray-100 p-12 max-w-md mx-auto">
+      <i class="fas fa-bookmark text-6xl mb-4 block text-gray-200"></i>
+      <p class="font-bold text-xl text-black mb-2">Belum ada konten disimpan</p>
+      <p class="text-gray-400 text-sm mb-6">Tekan ikon bookmark pada konten untuk menyimpan ke koleksi</p>
+      <a href="index.html" class="inline-block bg-black text-white px-6 py-3 rounded-xl font-bold hover:bg-zinc-800 transition">
+        <i class="fas fa-home mr-2"></i>Kembali ke Beranda
+      </a>
+    </div>
+  </div>
+
+</main>
+
+<!-- ===== MODAL KONFIRMASI HAPUS ===== -->
+<div id="modal-hapus" class="modal-backdrop fixed inset-0 bg-black/50 z-50 hidden items-center justify-center" onclick="closeModalBackdrop(event,'modal-hapus')">
+  <div class="modal-box bg-white rounded-2xl max-w-md w-full mx-4 p-6 relative" onclick="event.stopPropagation()">
+    <button onclick="closeModal('modal-hapus')" class="absolute top-4 right-4 text-gray-400 hover:text-black"><i class="fas fa-times text-lg"></i></button>
+    <div class="text-center">
+      <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+        <i class="fas fa-trash-alt text-red-500 text-2xl"></i>
+      </div>
+      <h3 class="text-xl font-bold text-black mb-2">Hapus dari Disimpan?</h3>
+      <p class="text-gray-500 text-sm mb-6">Konten akan dihapus dari koleksi tersimpan Anda.</p>
+      <div class="flex gap-3">
+        <button onclick="closeModal('modal-hapus')" class="flex-1 border-2 border-gray-200 py-2 rounded-xl font-bold hover:bg-gray-50">Batal</button>
+        <button id="confirm-hapus-btn" class="flex-1 bg-red-500 text-white py-2 rounded-xl font-bold hover:bg-red-600 transition">Hapus</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL DETAIL KONTEN ===== -->
+<div id="modal-detail" class="modal-backdrop fixed inset-0 bg-black/50 z-50 hidden items-center justify-center" onclick="closeModalBackdrop(event,'modal-detail')">
+  <div class="modal-box bg-white rounded-2xl max-w-2xl w-full mx-4 relative max-h-[85vh] overflow-y-auto" onclick="event.stopPropagation()">
+    <button onclick="closeModal('modal-detail')" class="absolute top-4 right-4 text-gray-400 hover:text-black z-10"><i class="fas fa-times text-lg"></i></button>
+    <div id="detail-content" class="p-6"></div>
+  </div>
+</div>
+
+<div id="overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/60 z-40 hidden lg:hidden"></div>
+<div id="toast" class="fixed bottom-4 right-4 z-50"></div>
+
+<script src="js/menu.js"></script>
+
+<script>
+// Fungsi tambahan khusus untuk halaman disimpan
+let currentSavedFilter = 'semua';
+let savedItemsCache = [];
+
+// Filter fungsi
+function filterSaved(filter) {
+  currentSavedFilter = filter;
+  
+  // Update tombol aktif
+  document.querySelectorAll('[id^="filter-"]').forEach(btn => {
+    btn.classList.remove('bg-black', 'text-white');
+    btn.classList.add('bg-gray-100', 'text-gray-600');
+  });
+  document.getElementById(`filter-${filter}`).classList.remove('bg-gray-100', 'text-gray-600');
+  document.getElementById(`filter-${filter}`).classList.add('bg-black', 'text-white');
+  
+  renderSavedItems();
+}
+
+// Render items yang disimpan
+function renderSavedItems() {
+  const grid = document.getElementById('disimpan-grid');
+  const emptyDiv = document.getElementById('disimpan-empty');
+  
+  let filtered = savedItemsCache;
+  if (currentSavedFilter === 'konten') {
+    filtered = savedItemsCache.filter(item => item.type === 'content');
+  } else if (currentSavedFilter === 'link') {
+    filtered = savedItemsCache.filter(item => item.type === 'link');
+  }
+  
+  if (!filtered || filtered.length === 0) {
+    grid.classList.add('hidden');
+    emptyDiv.classList.remove('hidden');
+    return;
+  }
+  
+  grid.classList.remove('hidden');
+  emptyDiv.classList.add('hidden');
+  
+  grid.innerHTML = filtered.map(item => {
+    if (item.type === 'content') {
+      return `
+        <div class="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden hover:shadow-xl transition cursor-pointer group" onclick="showDetail('${item.id}', 'content')">
+          <div class="relative h-40 bg-gray-100 overflow-hidden">
+            ${item.thumbnail ? 
+              `<img src="${item.thumbnail}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">` :
+              `<div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-600">
+                 <i class="fas fa-file-alt text-white text-4xl opacity-50"></i>
+               </div>`
+            }
+            <button onclick="event.stopPropagation(); unsaveItem('${item.id}', 'content')" 
+              class="absolute top-2 right-2 bg-white/90 hover:bg-red-500 text-black hover:text-white rounded-full w-8 h-8 flex items-center justify-center shadow-md transition">
+              <i class="fas fa-bookmark text-sm"></i>
+            </button>
+          </div>
+          <div class="p-4">
+            <h3 class="font-bold text-black text-sm mb-1 line-clamp-1">${escapeHtml(item.title)}</h3>
+            <p class="text-gray-400 text-xs line-clamp-2">${escapeHtml(item.description || 'Tidak ada deskripsi')}</p>
+            <div class="flex items-center justify-between mt-3">
+              <span class="text-xs px-2 py-1 bg-gray-100 rounded-full">${escapeHtml(item.category || 'Umum')}</span>
+              <span class="text-xs text-gray-400"><i class="far fa-clock mr-1"></i>${formatDate(item.saved_at)}</span>
+            </div>
+          </div>
+        </div>
+      `;
+    } else {
+      return `
+        <div class="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden hover:shadow-xl transition cursor-pointer group" onclick="showDetail('${item.id}', 'link')">
+          <div class="relative h-32 bg-gray-100 flex items-center justify-center">
+            ${item.icon ? 
+              `<img src="${item.icon}" class="w-12 h-12 object-contain">` :
+              `<i class="fas fa-link text-4xl text-gray-300"></i>`
+            }
+            <button onclick="event.stopPropagation(); unsaveItem('${item.id}', 'link')" 
+              class="absolute top-2 right-2 bg-white/90 hover:bg-red-500 text-black hover:text-white rounded-full w-8 h-8 flex items-center justify-center shadow-md transition">
+              <i class="fas fa-bookmark text-sm"></i>
+            </button>
+          </div>
+          <div class="p-4">
+            <h3 class="font-bold text-black text-sm mb-1 line-clamp-1">${escapeHtml(item.title)}</h3>
+            <p class="text-blue-500 text-xs truncate">${escapeHtml(item.url || '')}</p>
+            <p class="text-gray-400 text-xs mt-2 line-clamp-1">${escapeHtml(item.description || 'Tidak ada deskripsi')}</p>
+            <div class="flex items-center justify-between mt-3">
+              <span class="text-xs px-2 py-1 bg-gray-100 rounded-full">${escapeHtml(item.category || 'Link')}</span>
+              <span class="text-xs text-gray-400"><i class="far fa-clock mr-1"></i>${formatDate(item.saved_at)}</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+  }).join('');
+}
+
+// Hapus dari disimpan
+let pendingDelete = null;
+
+function unsaveItem(id, type) {
+  pendingDelete = { id, type };
+  openModal('modal-hapus');
+}
+
+document.getElementById('confirm-hapus-btn')?.addEventListener('click', async () => {
+  if (pendingDelete) {
+    await removeFromSaved(pendingDelete.id, pendingDelete.type);
+    closeModal('modal-hapus');
+    pendingDelete = null;
+    await loadSavedItems();
+  }
+});
+
+// Load data dari Supabase
+async function loadSavedItems() {
+  if (window.supabase && window.currentUser) {
+    const { data, error } = await window.supabase
+      .from('saved_items')
+      .select('*')
+      .eq('user_id', window.currentUser.id)
+      .order('saved_at', { ascending: false });
+    
+    if (!error && data) {
+      savedItemsCache = data;
+      renderSavedItems();
+    }
+  }
+}
+
+// Helper functions
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/[&<>]/g, function(m) {
+    if (m === '&') return '&amp;';
+    if (m === '<') return '&lt;';
+    if (m === '>') return '&gt;';
+    return m;
+  });
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diff = now - date;
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  if (days === 0) return 'Hari ini';
+  if (days === 1) return 'Kemarin';
+  if (days < 7) return `${days} hari lalu`;
+  return date.toLocaleDateString('id-ID');
+}
+
+function showDetail(id, type) {
+  const item = savedItemsCache.find(i => i.id === id);
+  if (!item) return;
+  
+  const detailDiv = document.getElementById('detail-content');
+  if (type === 'content') {
+    detailDiv.innerHTML = `
+      <h2 class="text-2xl font-bold mb-4">${escapeHtml(item.title)}</h2>
+      ${item.thumbnail ? `<img src="${item.thumbnail}" class="w-full rounded-xl mb-4">` : ''}
+      <div class="mb-4">
+        <span class="text-xs px-2 py-1 bg-gray-100 rounded-full">${escapeHtml(item.category)}</span>
+      </div>
+      <p class="text-gray-600 mb-4">${escapeHtml(item.description)}</p>
+      ${item.url ? `<a href="${item.url}" target="_blank" class="text-blue-500 hover:underline break-all"><i class="fas fa-link mr-1"></i>${escapeHtml(item.url)}</a>` : ''}
+      <div class="mt-4 pt-4 border-t text-gray-400 text-xs">
+        Disimpan pada ${new Date(item.saved_at).toLocaleString('id-ID')}
+      </div>
+    `;
+  } else {
+    detailDiv.innerHTML = `
+      <h2 class="text-2xl font-bold mb-4">${escapeHtml(item.title)}</h2>
+      ${item.icon ? `<img src="${item.icon}" class="w-16 h-16 rounded-xl mb-4">` : ''}
+      <div class="mb-4">
+        <span class="text-xs px-2 py-1 bg-gray-100 rounded-full">${escapeHtml(item.category)}</span>
+        <span class="text-xs px-2 py-1 bg-gray-100 rounded-full ml-2">${escapeHtml(item.status || 'Active')}</span>
+      </div>
+      <p class="text-gray-600 mb-4">${escapeHtml(item.description)}</p>
+      <a href="${item.url}" target="_blank" class="text-blue-500 hover:underline break-all block mb-4"><i class="fas fa-external-link-alt mr-1"></i>${escapeHtml(item.url)}</a>
+      <div class="mt-4 pt-4 border-t text-gray-400 text-xs">
+        Disimpan pada ${new Date(item.saved_at).toLocaleString('id-ID')}
+      </div>
+    `;
+  }
+  openModal('modal-detail');
+}
+
+// Inisialisasi
+document.addEventListener('DOMContentLoaded', () => {
+  loadSavedItems();
+});
+</script>
+
+<style>
+.line-clamp-1 {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+</style>
+
+</body>
+</html>

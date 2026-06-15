@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Profil — Nissan Ex</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet"href="css/menu.css">
+<script type="module" src="supabase.js"></script>
+</head>
+<body class="flex min-h-screen">
+
+<!-- ===== SIDEBAR ===== -->
+<aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-64 bg-black text-white transform -translate-x-full lg:translate-x-0 transition-transform duration-300 shadow-2xl flex flex-col">
+  <div class="p-6 flex items-center gap-3">
+    <div class="w-9 h-9 bg-white rounded-xl flex items-center justify-center">
+      <span class="text-black font-bold text-lg leading-none">N</span>
+    </div>
+    <h1 class="text-xl font-bold tracking-tight brand-lora">Nissan Ex</h1>
+  </div>
+  <nav class="mt-2 px-4 space-y-1 flex-1">
+    <a href="index.html" class="nav-link w-full flex items-center p-3 rounded-xl hover:bg-white/10 transition gap-3 text-sm">
+      <i class="fas fa-home w-5 text-center"></i><span>Beranda</span>
+    </a>
+    <a href="kategori.html" class="nav-link w-full flex items-center p-3 rounded-xl hover:bg-white/10 transition gap-3 text-sm">
+      <i class="fas fa-th-large w-5 text-center"></i><span>Kategori</span>
+    </a>
+    <a href="tren.html" class="nav-link w-full flex items-center p-3 rounded-xl hover:bg-white/10 transition gap-3 text-sm">
+      <i class="fas fa-chart-line w-5 text-center"></i><span>Tren</span>
+    </a>
+    <a href="disimpan.html" class="nav-link w-full flex items-center p-3 rounded-xl hover:bg-white/10 transition gap-3 text-sm">
+      <i class="fas fa-bookmark w-5 text-center"></i><span>Disimpan</span>
+    </a>
+    <a href="diskusi.html" class="nav-link w-full flex items-center p-3 rounded-xl hover:bg-white/10 transition gap-3 text-sm">
+      <i class="fas fa-comments w-5 text-center"></i><span>Diskusi</span>
+    </a>
+    <a href="analyst.html" class="nav-link w-full flex items-center p-3 rounded-xl hover:bg-white/10 transition gap-3 text-sm">
+      <i class="fas fa-chart-bar w-5 text-center"></i><span>Analyst Project</span>
+    </a>
+  </nav>
+  <div class="px-4 pb-6 border-t border-white/10 pt-4">
+    <a href="pengaturan.html" class="nav-link w-full flex items-center p-3 rounded-xl hover:bg-white/10 transition gap-3 text-sm text-gray-400">
+      <i class="fas fa-cog w-5 text-center"></i><span>Pengaturan</span>
+    </a>
+    <button onclick="logout()" class="mt-2 w-full flex items-center p-3 rounded-xl hover:bg-white/10 transition gap-3 text-sm text-red-400">
+      <i class="fas fa-sign-out-alt w-5 text-center"></i><span>Keluar</span>
+    </button>
+  </div>
+</aside>
+
+<!-- ===== MAIN ===== -->
+<main class="flex-1 lg:ml-64 p-4 md:p-8 min-h-screen">
+
+  <!-- HEADER -->
+  <header class="mb-8">
+    <div class="lg:hidden flex items-center justify-between gap-4 mb-4">
+      <div class="flex items-center gap-3">
+        <button onclick="toggleSidebar()" class="p-2 text-black"><i class="fas fa-bars text-xl"></i></button>
+        <span class="text-lg font-bold brand-lora">Nissan Ex</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="toggleMobileSearch()" class="p-2"><i class="fas fa-search text-xl"></i></button>
+        <button onclick="location.reload()" class="p-2"><i class="fas fa-user-circle text-xl"></i></button>
+      </div>
+    </div>
+    <div id="mobile-search-bar" class="hidden lg:hidden mb-4">
+      <div class="relative">
+        <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-500"><i class="fas fa-search"></i></span>
+        <input type="text" oninput="handleSearch(this.value)" placeholder="Cari konten atau kategori..." class="w-full bg-black text-white py-3 pl-12 pr-4 rounded-2xl outline-none placeholder:text-gray-500 text-sm">
+      </div>
+    </div>
+    <div class="hidden lg:flex items-center gap-4">
+      <div class="flex-1 relative">
+        <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-500"><i class="fas fa-search"></i></span>
+        <input id="global-search" type="text" oninput="handleSearch(this.value)" placeholder="Cari konten atau kategori..." class="w-full bg-black text-white py-3.5 pl-12 pr-4 rounded-2xl focus:ring-2 focus:ring-gray-700 outline-none placeholder:text-gray-500">
+      </div>
+      <button onclick="location.reload()" class="p-3 hover:bg-gray-200 rounded-xl transition">
+        <i class="fas fa-user-circle text-2xl text-black"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- ===== KONTEN PROFIL ===== -->
+  
+  <!-- Cover -->
+  <div class="mb-6">
+    <div class="relative w-full h-48 md:h-64 bg-gradient-to-r from-zinc-900 to-zinc-700 rounded-[2rem] shadow-lg overflow-hidden">
+      <img id="cover-img" src="" class="w-full h-full object-cover hidden">
+      <label class="absolute top-4 right-4 bg-black/70 hover:bg-black text-white px-4 py-2 rounded-xl cursor-pointer flex items-center gap-2 text-sm font-bold">
+        <i class="fas fa-camera"></i> Ubah Cover
+        <input type="file" accept="image/*" onchange="uploadCover(this)" class="hidden">
+      </label>
+    </div>
+    
+    <!-- Profile card -->
+    <div class="bg-white rounded-[2rem] shadow-xl border border-gray-100 mx-4 md:mx-0 -mt-16 relative z-10 p-6 md:p-8">
+      <div class="flex flex-col md:flex-row gap-6 items-start md:items-end">
+        <div class="relative -mt-24 md:-mt-20">
+          <div id="avatar-wrap" class="w-28 h-28 md:w-36 md:h-36 rounded-[1.5rem] bg-gradient-to-br from-zinc-700 to-black shadow-xl flex items-center justify-center text-white text-5xl font-bold border-4 border-white overflow-hidden">
+            <img id="avatar-img" src="" class="w-full h-full object-cover hidden">
+            <span id="avatar-initial">S</span>
+          </div>
+          <label class="absolute bottom-2 right-2 bg-black text-white p-2 rounded-lg cursor-pointer hover:bg-zinc-800 transition shadow">
+            <i class="fas fa-camera text-xs"></i>
+            <input type="file" accept="image/*" onchange="uploadAvatar(this)" class="hidden">
+          </label>
+        </div>
+        <div class="flex-1 pb-2">
+          <h1 id="profil-name" class="text-3xl font-bold text-black mb-1 tracking-tight">San Pelong</h1>
+          <p id="profil-username" class="text-gray-400 mb-1">@sanpelong</p>
+          <p id="profil-bio" class="text-gray-600 text-sm mb-4">Teknik Informatika Student | Game Dev | Web Developer</p>
+          <div class="flex gap-2 flex-wrap">
+            <button onclick="openUploadModal()" class="bg-black text-white px-5 py-2 rounded-xl font-bold hover:bg-zinc-800 transition flex items-center gap-2 text-sm">
+              <i class="fas fa-cloud-upload-alt"></i> Upload Konten
+            </button>
+            <button onclick="openEditProfil()" class="border-2 border-black text-black px-5 py-2 rounded-xl font-bold hover:bg-gray-50 transition text-sm flex items-center gap-2">
+              <i class="fas fa-pen"></i> Edit Profil
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="grid grid-cols-3 md:grid-cols-6 gap-4 mb-8">
+    <div class="bg-white rounded-[1.5rem] shadow border border-gray-100 p-4 text-center">
+      <div id="stat-followers" class="text-2xl font-bold text-black">0</div>
+      <p class="text-xs text-gray-500 mt-1">Pengikut</p>
+    </div>
+    <div class="bg-white rounded-[1.5rem] shadow border border-gray-100 p-4 text-center">
+      <div id="stat-following" class="text-2xl font-bold text-black">0</div>
+      <p class="text-xs text-gray-500 mt-1">Mengikuti</p>
+    </div>
+    <div class="bg-white rounded-[1.5rem] shadow border border-gray-100 p-4 text-center">
+      <div id="stat-posts" class="text-2xl font-bold text-black">0</div>
+      <p class="text-xs text-gray-500 mt-1">Postingan</p>
+    </div>
+    <div class="bg-white rounded-[1.5rem] shadow border border-gray-100 p-4 text-center">
+      <div id="stat-likes-total" class="text-2xl font-bold text-black">0</div>
+      <p class="text-xs text-gray-500 mt-1">Suka</p>
+    </div>
+    <div class="bg-white rounded-[1.5rem] shadow border border-gray-100 p-4 text-center">
+      <div id="stat-comments" class="text-2xl font-bold text-black">0</div>
+      <p class="text-xs text-gray-500 mt-1">Komentar</p>
+    </div>
+    <div class="bg-white rounded-[1.5rem] shadow border border-gray-100 p-4 text-center">
+      <div id="stat-shares" class="text-2xl font-bold text-black">0</div>
+      <p class="text-xs text-gray-500 mt-1">Bagikan</p>
+    </div>
+  </div>
+
+  <!-- About + Upload section -->
+  <div class="grid md:grid-cols-3 gap-6 mb-8">
+    <div class="md:col-span-2 bg-white rounded-[2rem] shadow-xl border border-gray-100 p-8">
+      <h2 class="text-2xl font-bold text-black mb-6">Tentang Saya</h2>
+      <div class="space-y-4 text-gray-700 text-sm">
+        <div class="flex items-start gap-4">
+          <i class="fas fa-map-marker-alt text-black mt-0.5 flex-shrink-0"></i>
+          <div><p class="font-bold text-black">Lokasi</p><p id="info-location">Bekasi, Indonesia</p></div>
+        </div>
+        <div class="flex items-start gap-4">
+          <i class="fas fa-briefcase text-black mt-0.5 flex-shrink-0"></i>
+          <div><p class="font-bold text-black">Pekerjaan</p><p id="info-occupation">Teknik Informatika Student</p></div>
+        </div>
+        <div class="flex items-start gap-4">
+          <i class="fas fa-code text-black mt-0.5 flex-shrink-0"></i>
+          <div><p class="font-bold text-black">Tech Stack</p><p id="info-techstack">HTML/CSS/JS, Godot 4, Python, Blender</p></div>
+        </div>
+        <div class="flex items-start gap-4">
+          <i class="fas fa-heart text-black mt-0.5 flex-shrink-0"></i>
+          <div><p class="font-bold text-black">Minat</p><p id="info-interests">Game Development, Web Development</p></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Upload panel -->
+    <div class="bg-white rounded-[2rem] shadow-xl border border-gray-100 p-6">
+      <h3 class="text-xl font-bold text-black mb-5 flex items-center gap-2">
+        <i class="fas fa-cloud-upload-alt"></i> Upload Konten
+      </h3>
+      <!-- Upload type tabs -->
+      <div class="flex gap-2 mb-5 bg-gray-100 p-1 rounded-xl">
+        <button onclick="setUploadTab('konten')" class="upload-tab active flex-1 text-center py-2 rounded-lg text-sm font-medium transition" id="tab-konten">
+          <i class="fas fa-file-alt mr-1"></i> Konten
+        </button>
+        <button onclick="setUploadTab('linkweb')" class="upload-tab flex-1 text-center py-2 rounded-lg text-sm font-medium transition" id="tab-linkweb">
+          <i class="fas fa-link mr-1"></i> Link Web
+        </button>
+      </div>
+
+      <!-- KONTEN UPLOAD -->
+      <div id="upload-konten-panel">
+        <div class="drop-zone mb-3 border-2 border-dashed border-gray-300 rounded-xl p-6 text-center cursor-pointer hover:border-black transition" id="drop-zone-mini" onclick="document.getElementById('mini-file').click()" ondragover="event.preventDefault();this.classList.add('border-black')" ondragleave="this.classList.remove('border-black')" ondrop="handleMiniDrop(event)">
+          <input type="file" id="mini-file" accept="image/*,video/*,.pdf,.doc,.docx" onchange="handleMiniFile(this)" class="hidden">
+          <i class="fas fa-cloud-upload-alt text-2xl text-gray-300 mb-2 block"></i>
+          <p class="font-bold text-black text-xs mb-1">Drag & drop atau klik</p>
+          <p class="text-xs text-gray-400">Image, Video, PDF, Dokumen</p>
+        </div>
+        <div id="mini-file-preview" class="hidden mb-3 p-3 bg-gray-50 rounded-xl flex items-center gap-3">
+          <i class="fas fa-file text-gray-400"></i>
+          <div class="flex-1 min-w-0">
+            <p id="mini-file-name" class="text-xs font-bold truncate"></p>
+            <p id="mini-file-size" class="text-xs text-gray-400"></p>
+          </div>
+          <button onclick="clearMiniFile()" class="text-gray-400 hover:text-red-500"><i class="fas fa-times"></i></button>
+        </div>
+        <button onclick="openUploadModal()" class="w-full bg-black text-white py-2.5 rounded-xl font-bold text-sm hover:bg-zinc-800 transition">
+          <i class="fas fa-upload mr-2"></i>Upload & Detail
+        </button>
+      </div>
+
+      <!-- LINK WEB UPLOAD -->
+      <div id="upload-linkweb-panel" class="hidden">
+        <button onclick="openLinkModal()" class="w-full border-2 border-dashed border-gray-300 text-gray-500 py-8 rounded-xl font-bold text-sm hover:border-black hover:text-black transition text-center">
+          <i class="fas fa-link text-2xl mb-2 block text-gray-300"></i>
+          Tambah Link Web
+        </button>
+      </div>
+
+      <!-- Recent uploads -->
+      <div class="mt-4">
+        <p class="text-xs font-bold text-black mb-2 uppercase tracking-widest">Upload Terbaru</p>
+        <div id="recent-uploads" class="space-y-2"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Posts / Activity — TAB: Konten & Diskusi -->
+  <div class="bg-white rounded-[2rem] shadow-xl border border-gray-100 p-8">
+    <!-- Tab header -->
+    <div class="flex items-center gap-6 mb-8 border-b border-gray-100 pb-4">
+      <button onclick="switchProfilTab('konten')" id="profil-tab-konten"
+        class="profil-tab-btn active text-lg font-bold text-black border-b-2 border-black pb-3 -mb-[1.05rem] transition">
+        <i class="fas fa-th-large mr-2 text-sm"></i>Konten
+      </button>
+      <button onclick="switchProfilTab('diskusi')" id="profil-tab-diskusi"
+        class="profil-tab-btn text-lg font-bold text-gray-400 border-b-2 border-transparent pb-3 -mb-[1.05rem] hover:text-black transition">
+        <i class="fas fa-comments mr-2 text-sm"></i>Diskusi
+      </button>
+    </div>
+    <!-- Panel: Konten -->
+    <div id="profil-panel-konten">
+      <div id="profil-konten-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5"></div>
+    </div>
+    <!-- Panel: Diskusi -->
+    <div id="profil-panel-diskusi" class="hidden">
+      <div id="profil-activity" class="space-y-0"></div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ===== MODALS ===== -->
+
+<!-- MODAL: UPLOAD KONTEN -->
+<div id="modal-upload" class="modal-backdrop fixed inset-0 bg-black/50 z-50 hidden items-center justify-center" onclick="closeModalBackdrop(event,'modal-upload')">
+  <div class="modal-box bg-white rounded-2xl max-w-lg w-full mx-4 p-6 relative max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+    <button onclick="closeModal('modal-upload')" class="absolute top-4 right-4 text-gray-400 hover:text-black"><i class="fas fa-times text-lg"></i></button>
+    <h2 class="text-2xl font-bold mb-1">Upload Konten</h2>
+    <p class="text-sm text-gray-400 mb-6">Tambah file konten ke platform</p>
+
+    <div class="space-y-4">
+      <div>
+        <label class="form-label block text-sm font-bold mb-1">Judul Konten *</label>
+        <input id="up-title" type="text" class="form-input w-full border border-gray-300 rounded-xl p-3">
+      </div>
+      <div>
+        <label class="form-label block text-sm font-bold mb-1">Kategori *</label>
+        <select id="up-category" class="form-input w-full border border-gray-300 rounded-xl p-3">
+          <option value="">Pilih kategori...</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label block text-sm font-bold mb-1">Deskripsi</label>
+        <textarea id="up-desc" class="form-input w-full border border-gray-300 rounded-xl p-3" rows="3"></textarea>
+      </div>
+      <div>
+        <label class="form-label block text-sm font-bold mb-1">URL Web <span class="text-gray-400 font-normal">(opsional)</span></label>
+        <input id="up-url" type="url" class="form-input w-full border border-gray-300 rounded-xl p-3" placeholder="https://...">
+      </div>
+    </div>
+
+    <div class="flex gap-3 mt-6">
+      <button onclick="closeModal('modal-upload')" class="flex-1 border-2 border-gray-200 py-3 rounded-xl font-bold hover:bg-gray-50">Batal</button>
+      <button onclick="submitUpload()" class="flex-1 bg-black text-white py-3 rounded-xl font-bold hover:bg-zinc-800">Upload</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: LINK WEB -->
+<div id="modal-link" class="modal-backdrop fixed inset-0 bg-black/50 z-50 hidden items-center justify-center" onclick="closeModalBackdrop(event,'modal-link')">
+  <div class="modal-box bg-white rounded-2xl max-w-lg w-full mx-4 p-6 relative" onclick="event.stopPropagation()">
+    <button onclick="closeModal('modal-link')" class="absolute top-4 right-4 text-gray-400 hover:text-black"><i class="fas fa-times text-lg"></i></button>
+    <h2 class="text-2xl font-bold mb-1">Tambah Link Web</h2>
+    <p class="text-sm text-gray-400 mb-6">Simpan referensi website atau proyek</p>
+
+    <div class="space-y-4">
+      <div><label class="form-label block text-sm font-bold mb-1">Judul Link *</label><input id="lk-title" type="text" class="form-input w-full border border-gray-300 rounded-xl p-3"></div>
+      <div><label class="form-label block text-sm font-bold mb-1">URL *</label><input id="lk-url" type="url" class="form-input w-full border border-gray-300 rounded-xl p-3"></div>
+      <div><label class="form-label block text-sm font-bold mb-1">Kategori</label><select id="lk-category" class="form-input w-full border border-gray-300 rounded-xl p-3"></select></div>
+      <div><label class="form-label block text-sm font-bold mb-1">Deskripsi</label><textarea id="lk-desc" class="form-input w-full border border-gray-300 rounded-xl p-3" rows="2"></textarea></div>
+      <div><label class="form-label block text-sm font-bold mb-1">Status</label>
+        <select id="lk-status" class="form-input w-full border border-gray-300 rounded-xl p-3">
+          <option value="active">Aktif / Live</option>
+          <option value="development">Development</option>
+          <option value="archived">Arsip</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="flex gap-3 mt-6">
+      <button onclick="closeModal('modal-link')" class="flex-1 border-2 border-gray-200 py-3 rounded-xl font-bold">Batal</button>
+      <button onclick="submitLink()" class="flex-1 bg-black text-white py-3 rounded-xl font-bold">Simpan Link</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: EDIT PROFIL -->
+<div id="modal-editprofil" class="modal-backdrop fixed inset-0 bg-black/50 z-50 hidden items-center justify-center" onclick="closeModalBackdrop(event,'modal-editprofil')">
+  <div class="modal-box bg-white rounded-2xl max-w-lg w-full mx-4 p-6 relative" onclick="event.stopPropagation()">
+    <button onclick="closeModal('modal-editprofil')" class="absolute top-4 right-4 text-gray-400 hover:text-black"><i class="fas fa-times text-lg"></i></button>
+    <h2 class="text-2xl font-bold mb-5">Edit Profil</h2>
+    <div class="space-y-4">
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="form-label block text-sm font-bold mb-1">Nama Lengkap</label><input id="ep-name" type="text" class="form-input w-full border border-gray-300 rounded-xl p-3"></div>
+        <div><label class="form-label block text-sm font-bold mb-1">Username</label><input id="ep-username" type="text" class="form-input w-full border border-gray-300 rounded-xl p-3"></div>
+      </div>
+      <div><label class="form-label block text-sm font-bold mb-1">Bio</label><textarea id="ep-bio" class="form-input w-full border border-gray-300 rounded-xl p-3" rows="2"></textarea></div>
+      <div><label class="form-label block text-sm font-bold mb-1">Lokasi</label><input id="ep-location" type="text" class="form-input w-full border border-gray-300 rounded-xl p-3"></div>
+      <div><label class="form-label block text-sm font-bold mb-1">Pekerjaan</label><input id="ep-occupation" type="text" class="form-input w-full border border-gray-300 rounded-xl p-3"></div>
+      <div><label class="form-label block text-sm font-bold mb-1">Tech Stack</label><input id="ep-techstack" type="text" class="form-input w-full border border-gray-300 rounded-xl p-3"></div>
+      <div><label class="form-label block text-sm font-bold mb-1">Minat</label><input id="ep-interests" type="text" class="form-input w-full border border-gray-300 rounded-xl p-3"></div>
+    </div>
+    <div class="flex gap-3 mt-6">
+      <button onclick="closeModal('modal-editprofil')" class="flex-1 border-2 border-gray-200 py-3 rounded-xl font-bold">Batal</button>
+      <button onclick="saveEditProfil()" class="flex-1 bg-black text-white py-3 rounded-xl font-bold">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: EDIT KONTEN -->
+<div id="modal-edit-konten" class="modal-backdrop fixed inset-0 bg-black/50 z-50 hidden items-center justify-center" onclick="closeModalBackdrop(event,'modal-edit-konten')">
+  <div class="modal-box bg-white rounded-2xl max-w-lg w-full mx-4 p-6 relative" onclick="event.stopPropagation()">
+    <button onclick="closeModal('modal-edit-konten')" class="absolute top-4 right-4 text-gray-400 hover:text-black"><i class="fas fa-times text-lg"></i></button>
+    <h2 class="text-2xl font-bold mb-1">Edit Konten</h2>
+    <p class="text-sm text-gray-400 mb-6">Perbarui informasi konten</p>
+    <input type="hidden" id="edit-konten-id">
+    <div class="space-y-4">
+      <div><label class="form-label block text-sm font-bold mb-1">Judul Konten *</label><input id="edit-konten-title" type="text" class="form-input w-full border border-gray-300 rounded-xl p-3"></div>
+      <div><label class="form-label block text-sm font-bold mb-1">Kategori</label><select id="edit-konten-category" class="form-input w-full border border-gray-300 rounded-xl p-3"></select></div>
+      <div><label class="form-label block text-sm font-bold mb-1">Deskripsi</label><textarea id="edit-konten-desc" class="form-input w-full border border-gray-300 rounded-xl p-3" rows="3"></textarea></div>
+      <div><label class="form-label block text-sm font-bold mb-1">URL Web</label><input id="edit-konten-url" type="url" class="form-input w-full border border-gray-300 rounded-xl p-3"></div>
+    </div>
+    <div class="flex gap-3 mt-6">
+      <button onclick="closeModal('modal-edit-konten')" class="flex-1 border-2 border-gray-200 py-3 rounded-xl font-bold">Batal</button>
+      <button onclick="saveEditKonten()" class="flex-1 bg-black text-white py-3 rounded-xl font-bold">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<div id="overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/60 z-40 hidden lg:hidden"></div>
+<div id="toast" class="fixed bottom-4 right-4 z-50"></div>
+
+<script src="js/menu.js"></script>
+</body>
+</html>

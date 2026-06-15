@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pengaturan — Nissan Ex</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/menu.css">
+<script type="module" src="supabase.js"></script>
+</head>
+<body class="flex min-h-screen">
+
+<!-- ===== SIDEBAR ===== -->
+<aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-64 bg-black text-white transform -translate-x-full lg:translate-x-0 transition-transform duration-300 shadow-2xl flex flex-col">
+  <div class="p-6 flex items-center gap-3">
+    <div class="w-9 h-9 bg-white rounded-xl flex items-center justify-center">
+      <span class="text-black font-bold text-lg leading-none">N</span>
+    </div>
+    <h1 class="text-xl font-bold tracking-tight brand-lora">Nissan Ex</h1>
+  </div>
+  <nav class="mt-2 px-4 space-y-1 flex-1">
+    <a href="index.html" class="nav-link w-full flex items-center p-3 rounded-xl hover:bg-white/10 transition gap-3 text-sm">
+      <i class="fas fa-home w-5 text-center"></i><span>Beranda</span>
+    </a>
+    <a href="kategori.html" class="nav-link w-full flex items-center p-3 rounded-xl hover:bg-white/10 transition gap-3 text-sm">
+      <i class="fas fa-th-large w-5 text-center"></i><span>Kategori</span>
+    </a>
+    <a href="tren.html" class="nav-link w-full flex items-center p-3 rounded-xl hover:bg-white/10 transition gap-3 text-sm">
+      <i class="fas fa-chart-line w-5 text-center"></i><span>Tren</span>
+    </a>
+    <a href="disimpan.html" class="nav-link w-full flex items-center p-3 rounded-xl hover:bg-white/10 transition gap-3 text-sm">
+      <i class="fas fa-bookmark w-5 text-center"></i><span>Disimpan</span>
+    </a>
+    <a href="diskusi.html" class="nav-link w-full flex items-center p-3 rounded-xl hover:bg-white/10 transition gap-3 text-sm">
+      <i class="fas fa-comments w-5 text-center"></i><span>Diskusi</span>
+    </a>
+    <a href="analyst.html" class="nav-link w-full flex items-center p-3 rounded-xl hover:bg-white/10 transition gap-3 text-sm">
+      <i class="fas fa-chart-bar w-5 text-center"></i><span>Analyst Project</span>
+    </a>
+  </nav>
+  <div class="px-4 pb-6 border-t border-white/10 pt-4">
+    <a href="pengaturan.html" class="nav-link active w-full flex items-center p-3 rounded-xl hover:bg-white/10 transition gap-3 text-sm text-gray-400">
+      <i class="fas fa-cog w-5 text-center"></i><span>Pengaturan</span>
+    </a>
+    <button onclick="logout()" class="mt-2 w-full flex items-center p-3 rounded-xl hover:bg-white/10 transition gap-3 text-sm text-red-400">
+      <i class="fas fa-sign-out-alt w-5 text-center"></i><span>Keluar</span>
+    </button>
+  </div>
+</aside>
+
+<!-- ===== MAIN ===== -->
+<main class="flex-1 lg:ml-64 p-4 md:p-8 min-h-screen">
+
+  <!-- HEADER -->
+  <header class="mb-8">
+    <div class="lg:hidden flex items-center justify-between gap-4 mb-4">
+      <div class="flex items-center gap-3">
+        <button onclick="toggleSidebar()" class="p-2 text-black"><i class="fas fa-bars text-xl"></i></button>
+        <span class="text-lg font-bold brand-lora">Nissan Ex</span>
+      </div>
+      <a href="profil.html" class="p-2"><i class="fas fa-user-circle text-xl"></i></a>
+    </div>
+    <div class="hidden lg:flex items-center justify-end">
+      <a href="profil.html" class="p-3 hover:bg-gray-200 rounded-xl transition">
+        <i class="fas fa-user-circle text-2xl text-black"></i>
+      </a>
+    </div>
+  </header>
+
+  <!-- ===== KONTEN PENGATURAN ===== -->
+  <div class="mb-8">
+    <h2 class="text-3xl font-bold text-black">Pengaturan</h2>
+    <p class="text-gray-500 mt-1">Kelola akun dan preferensi Anda</p>
+  </div>
+
+  <div class="grid md:grid-cols-3 gap-6">
+    <!-- Sidebar Settings Menu -->
+    <div class="md:col-span-1">
+      <div class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden sticky top-8">
+        <div class="p-4 border-b border-gray-100">
+          <div class="flex items-center gap-3">
+            <div id="settings-avatar" class="w-10 h-10 rounded-xl bg-gradient-to-br from-zinc-700 to-black flex items-center justify-center text-white font-bold">
+              <span id="settings-initial">S</span>
+            </div>
+            <div>
+              <p id="settings-name" class="font-bold text-black text-sm">Loading...</p>
+              <p id="settings-email" class="text-xs text-gray-400">email@example.com</p>
+            </div>
+          </div>
+        </div>
+        <div class="p-2">
+          <button onclick="showSettingTab('profil')" id="tab-profil" class="setting-tab active w-full flex items-center gap-3 p-3 rounded-xl transition text-left">
+            <i class="fas fa-user w-5 text-gray-400"></i>
+            <div>
+              <p class="font-bold text-sm">Profil</p>
+              <p class="text-xs text-gray-400">Informasi pribadi</p>
+            </div>
+          </button>
+          <button onclick="showSettingTab('keamanan')" id="tab-keamanan" class="setting-tab w-full flex items-center gap-3 p-3 rounded-xl transition text-left">
+            <i class="fas fa-lock w-5 text-gray-400"></i>
+            <div>
+              <p class="font-bold text-sm">Keamanan & Privasi</p>
+              <p class="text-xs text-gray-400">Password dan privasi</p>
+            </div>
+          </button>
+          <button onclick="showSettingTab('notifikasi')" id="tab-notifikasi" class="setting-tab w-full flex items-center gap-3 p-3 rounded-xl transition text-left">
+            <i class="fas fa-bell w-5 text-gray-400"></i>
+            <div>
+              <p class="font-bold text-sm">Notifikasi</p>
+              <p class="text-xs text-gray-400">Preferensi notifikasi</p>
+            </div>
+          </button>
+          <button onclick="showSettingTab('tampilan')" id="tab-tampilan" class="setting-tab w-full flex items-center gap-3 p-3 rounded-xl transition text-left">
+            <i class="fas fa-palette w-5 text-gray-400"></i>
+            <div>
+              <p class="font-bold text-sm">Tampilan</p>
+              <p class="text-xs text-gray-400">Tema dan bahasa</p>
+            </div>
+          </button>
+          <button onclick="showSettingTab('data')" id="tab-data" class="setting-tab w-full flex items-center gap-3 p-3 rounded-xl transition text-left">
+            <i class="fas fa-database w-5 text-gray-400"></i>
+            <div>
+              <p class="font-bold text-sm">Data & Penyimpanan</p>
+              <p class="text-xs text-gray-400">Kelola data</p>
+            </div>
+          </button>
+          <button onclick="showSettingTab('bantuan')" id="tab-bantuan" class="setting-tab w-full flex items-center gap-3 p-3 rounded-xl transition text-left">
+            <i class="fas fa-question-circle w-5 text-gray-400"></i>
+            <div>
+              <p class="font-bold text-sm">Bantuan</p>
+              <p class="text-xs text-gray-400">FAQ dan dukungan</p>
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings Content -->
+    <div class="md:col-span-2">
+      
+      <!-- TAB: PROFIL -->
+      <div id="panel-profil" class="setting-panel active">
+        <div class="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 md:p-8">
+          <h3 class="text-xl font-bold text-black mb-6">Edit Profil</h3>
+          
+          <div class="space-y-5">
+            <div class="grid md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-bold text-black mb-2">Nama Lengkap</label>
+                <input type="text" id="set-name" class="w-full border border-gray-200 rounded-xl p-3 focus:border-black focus:outline-none">
+              </div>
+              <div>
+                <label class="block text-sm font-bold text-black mb-2">Username</label>
+                <input type="text" id="set-username" class="w-full border border-gray-200 rounded-xl p-3 focus:border-black focus:outline-none">
+              </div>
+            </div>
+            
+            <div>
+              <label class="block text-sm font-bold text-black mb-2">Bio</label>
+              <textarea id="set-bio" rows="3" class="w-full border border-gray-200 rounded-xl p-3 focus:border-black focus:outline-none"></textarea>
+            </div>
+            
+            <div class="grid md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-bold text-black mb-2">Lokasi</label>
+                <input type="text" id="set-location" class="w-full border border-gray-200 rounded-xl p-3 focus:border-black focus:outline-none">
+              </div>
+              <div>
+                <label class="block text-sm font-bold text-black mb-2">Pekerjaan</label>
+                <input type="text" id="set-occupation" class="w-full border border-gray-200 rounded-xl p-3 focus:border-black focus:outline-none">
+              </div>
+            </div>
+            
+            <div>
+              <label class="block text-sm font-bold text-black mb-2">Tech Stack</label>
+              <input type="text" id="set-techstack" class="w-full border border-gray-200 rounded-xl p-3 focus:border-black focus:outline-none" placeholder="React, Node.js, Python...">
+            </div>
+            
+            <div>
+              <label class="block text-sm font-bold text-black mb-2">Minat</label>
+              <input type="text" id="set-interests" class="w-full border border-gray-200 rounded-xl p-3 focus:border-black focus:outline-none" placeholder="Web Development, Game Dev...">
+            </div>
+            
+            <div class="pt-4">
+              <button onclick="saveProfileSettings()" class="bg-black text-white px-6 py-3 rounded-xl font-bold hover:bg-zinc-800 transition">
+                <i class="fas fa-save mr-2"></i>Simpan Perubahan
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: KEAMANAN -->
+      <div id="panel-keamanan" class="setting-panel hidden">
+        <div class="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 md:p-8">
+          <h3 class="text-xl font-bold text-black mb-6">Keamanan & Privasi</h3>
+          
+          <div class="space-y-6">
+            <!-- Ganti Password -->
+            <div class="border-b border-gray-100 pb-6">
+              <h4 class="font-bold text-black mb-4">Ganti Password</h4>
+              <div class="space-y-3">
+                <div>
+                  <label class="block text-sm text-gray-600 mb-1">Password Lama</label>
+                  <input type="password" id="old-password" class="w-full border border-gray-200 rounded-xl p-3 focus:border-black focus:outline-none">
+                </div>
+                <div>
+                  <label class="block text-sm text-gray-600 mb-1">Password Baru</label>
+                  <input type="password" id="new-password" class="w-full border border-gray-200 rounded-xl p-3 focus:border-black focus:outline-none">
+                </div>
+                <div>
+                  <label class="block text-sm text-gray-600 mb-1">Konfirmasi Password Baru</label>
+                  <input type="password" id="confirm-password" class="w-full border border-gray-200 rounded-xl p-3 focus:border-black focus:outline-none">
+                </div>
+                <button onclick="changePassword()" class="bg-black text-white px-6 py-2 rounded-xl font-bold text-sm hover:bg-zinc-800 transition">
+                  Update Password
+                </button>
+              </div>
+            </div>
+            
+            <!-- Privasi Akun -->
+            <div class="border-b border-gray-100 pb-6">
+              <h4 class="font-bold text-black mb-4">Privasi Akun</h4>
+              <div class="space-y-3">
+                <label class="flex items-center justify-between cursor-pointer">
+                  <div>
+                    <p class="font-medium text-black">Akun Privat</p>
+                    <p class="text-xs text-gray-400">Hanya pengikut yang bisa melihat konten Anda</p>
+                  </div>
+                  <input type="checkbox" id="private-account" class="toggle-checkbox">
+                </label>
+                <label class="flex items-center justify-between cursor-pointer">
+                  <div>
+                    <p class="font-medium text-black">Sembunyikan Status Online</p>
+                    <p class="text-xs text-gray-400">Orang lain tidak bisa melihat Anda online</p>
+                  </div>
+                  <input type="checkbox" id="hide-online" class="toggle-checkbox">
+                </label>
+              </div>
+            </div>
+            
+            <!-- Sesi Aktif -->
+            <div>
+              <h4 class="font-bold text-black mb-4">Sesi Aktif</h4>
+              <div id="active-sessions" class="space-y-2">
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                  <div>
+                    <p class="text-sm font-bold">Perangkat ini</p>
+                    <p class="text-xs text-gray-400">Chrome • Windows</p>
+                  </div>
+                  <span class="text-xs text-green-500">Aktif</span>
+                </div>
+              </div>
+              <button onclick="logoutAllDevices()" class="mt-3 text-red-500 text-sm hover:text-red-600 transition">
+                <i class="fas fa-sign-out-alt mr-1"></i>Keluar dari semua perangkat
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: NOTIFIKASI -->
+      <div id="panel-notifikasi" class="setting-panel hidden">
+        <div class="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 md:p-8">
+          <h3 class="text-xl font-bold text-black mb-6">Preferensi Notifikasi</h3>
+          
+          <div class="space-y-4">
+            <label class="flex items-center justify-between cursor-pointer p-3 hover:bg-gray-50 rounded-xl transition">
+              <div>
+                <p class="font-bold text-black">Notifikasi Email</p>
+                <p class="text-xs text-gray-400">Terima notifikasi melalui email</p>
+              </div>
+              <input type="checkbox" id="notif-email" class="toggle-checkbox">
+            </label>
+            
+            <label class="flex items-center justify-between cursor-pointer p-3 hover:bg-gray-50 rounded-xl transition">
+              <div>
+                <p class="font-bold text-black">Komentar Baru</p>
+                <p class="text-xs text-gray-400">Notifikasi saat ada komentar di konten Anda</p>
+              </div>
+              <input type="checkbox" id="notif-comment" class="toggle-checkbox">
+            </label>
+            
+            <label class="flex items-center justify-between cursor-pointer p-3 hover:bg-gray-50 rounded-xl transition">
+              <div>
+                <p class="font-bold text-black">Like & Reaksi</p>
+                <p class="text-xs text-gray-400">Notifikasi saat konten Anda di-like</p>
+              </div>
+              <input type="checkbox" id="notif-like" class="toggle-checkbox">
+            </label>
+            
+            <label class="flex items-center justify-between cursor-pointer p-3 hover:bg-gray-50 rounded-xl transition">
+              <div>
+                <p class="font-bold text-black">Pengikut Baru</p>
+                <p class="text-xs text-gray-400">Notifikasi saat ada yang mengikuti Anda</p>
+              </div>
+              <input type="checkbox" id="notif-follow" class="toggle-checkbox">
+            </label>
+            
+            <label class="flex items-center justify-between cursor-pointer p-3 hover:bg-gray-50 rounded-xl transition">
+              <div>
+                <p class="font-bold text-black">Pesan Langsung</p>
+                <p class="text-xs text-gray-400">Notifikasi untuk pesan langsung</p>
+              </div>
+              <input type="checkbox" id="notif-message" class="toggle-checkbox">
+            </label>
+            
+            <div class="pt-4">
+              <button onclick="saveNotificationSettings()" class="bg-black text-white px-6 py-3 rounded-xl font-bold hover:bg-zinc-800 transition">
+                Simpan Preferensi
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: TAMPILAN -->
+      <div id="panel-tampilan" class="setting-panel hidden">
+        <div class="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 md:p-8">
+          <h3 class="text-xl font-bold text-black mb-6">Tampilan</h3>
+          
+          <div class="space-y-6">
+            <div>
+              <label class="block font-bold text-black mb-3">Tema</label>
+              <div class="flex gap-3">
+                <button onclick="setTheme('light')" id="theme-light" class="flex-1 p-4 border-2 rounded-xl text-center transition">
+                  <i class="fas fa-sun text-2xl mb-2 block"></i>
+                  <span class="text-sm font-bold">Terang</span>
+                </button>
+                <button onclick="setTheme('dark')" id="theme-dark" class="flex-1 p-4 border-2 rounded-xl text-center transition">
+                  <i class="fas fa-moon text-2xl mb-2 block"></i>
+                  <span class="text-sm font-bold">Gelap</span>
+                </button>
+                <button onclick="setTheme('auto')" id="theme-auto" class="flex-1 p-4 border-2 rounded-xl text-center transition">
+                  <i class="fas fa-mobile-alt text-2xl mb-2 block"></i>
+                  <span class="text-sm font-bold">Sistem</span>
+                </button>
+              </div>
+            </div>
+            
+            <div>
+              <label class="block font-bold text-black mb-3">Bahasa</label>
+              <select id="language-select" class="w-full border border-gray-200 rounded-xl p-3 focus:border-black focus:outline-none">
+                <option value="id">Bahasa Indonesia</option>
+                <option value="en">English</option>
+              </select>
+            </div>
+            
+            <div>
+              <label class="flex items-center justify-between cursor-pointer">
+                <div>
+                  <p class="font-bold text-black">Animasi & Efek</p>
+                  <p class="text-xs text-gray-400">Aktifkan animasi halus di seluruh platform</p>
+                </div>
+                <input type="checkbox" id="enable-animation" class="toggle-checkbox" checked>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: DATA & PENYIMPANAN -->
+      <div id="panel-data" class="setting-panel hidden">
+        <div class="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 md:p-8">
+          <h3 class="text-xl font-bold text-black mb-6">Data & Penyimpanan</h3>
+          
+          <div class="space-y-6">
+            <!-- Statistik Data -->
+            <div class="bg-gray-50 rounded-xl p-4">
+              <h4 class="font-bold text-black mb-3">Statistik Data</h4>
+              <div class="grid grid-cols-2 gap-3 text-center">
+                <div>
+                  <p class="text-2xl font-bold text-black" id="stat-konten">0</p>
+                  <p class="text-xs text-gray-500">Konten</p>
+                </div>
+                <div>
+                  <p class="text-2xl font-bold text-black" id="stat-link">0</p>
+                  <p class="text-xs text-gray-500">Link Web</p>
+                </div>
+                <div>
+                  <p class="text-2xl font-bold text-black" id="stat-diskusi">0</p>
+                  <p class="text-xs text-gray-500">Diskusi</p>
+                </div>
+                <div>
+                  <p class="text-2xl font-bold text-black" id="stat-simpan">0</p>
+                  <p class="text-xs text-gray-500">Disimpan</p>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Backup Data -->
+            <div class="border-b border-gray-100 pb-6">
+              <h4 class="font-bold text-black mb-3">Backup Data</h4>
+              <button onclick="exportData()" class="bg-gray-800 text-white px-5 py-2 rounded-xl font-bold text-sm hover:bg-gray-700 transition">
+                <i class="fas fa-download mr-2"></i>Export Data (JSON)
+              </button>
+              <p class="text-xs text-gray-400 mt-2">Ekspor semua data Anda ke file JSON</p>
+            </div>
+            
+            <!-- Hapus Data -->
+            <div class="border-b border-gray-100 pb-6">
+              <h4 class="font-bold text-red-600 mb-3">Hapus Data</h4>
+              <button onclick="clearCacheData()" class="border border-red-500 text-red-500 px-5 py-2 rounded-xl font-bold text-sm hover:bg-red-50 transition">
+                <i class="fas fa-eraser mr-2"></i>Hapus Cache
+              </button>
+              <p class="text-xs text-gray-400 mt-2">Hapus data cache lokal browser</p>
+            </div>
+            
+            <!-- Hapus Akun -->
+            <div>
+              <h4 class="font-bold text-red-600 mb-3">Hapus Akun</h4>
+              <button onclick="showDeleteAccountModal()" class="bg-red-500 text-white px-5 py-2 rounded-xl font-bold text-sm hover:bg-red-600 transition">
+                <i class="fas fa-trash-alt mr-2"></i>Hapus Akun Permanen
+              </button>
+              <p class="text-xs text-gray-400 mt-2">Tindakan ini tidak dapat dibatalkan. Semua data akan hilang.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: BANTUAN -->
+      <div id="panel-bantuan" class="setting-panel hidden">
+        <div class="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 md:p-8">
+          <h3 class="text-xl font-bold text-black mb-6">Pusat Bantuan</h3>
+          
+          <div class="space-y-4">
+            <div class="border-b border-gray-100 pb-4">
+              <button onclick="toggleFaq('faq1')" class="flex items-center justify-between w-full text-left">
+                <p class="font-bold text-black">Bagaimana cara mengunggah konten?</p>
+                <i class="fas fa-chevron-down text-gray-400 transition"></i>
+              </button>
+              <div id="faq1" class="hidden mt-2 text-gray-500 text-sm">
+                Klik tombol "Upload Konten" di halaman Profil, pilih file yang ingin diunggah, isi judul dan kategori, lalu klik "Upload".
+              </div>
+            </div>
+            
+            <div class="border-b border-gray-100 pb-4">
+              <button onclick="toggleFaq('faq2')" class="flex items-center justify-between w-full text-left">
+                <p class="font-bold text-black">Bagaimana cara menyimpan konten?</p>
+                <i class="fas fa-chevron-down text-gray-400 transition"></i>
+              </button>
+              <div id="faq2" class="hidden mt-2 text-gray-500 text-sm">
+                Klik ikon bookmark pada kartu konten untuk menyimpan ke koleksi "Disimpan".
+              </div>
+            </div>
+            
+            <div class="border-b border-gray-100 pb-4">
+              <button onclick="toggleFaq('faq3')" class="flex items-center justify-between w-full text-left">
+                <p class="font-bold text-black">Apa itu Analyst Project?</p>
+                <i class="fas fa-chevron-down text-gray-400 transition"></i>
+              </button>
+              <div id="faq3" class="hidden mt-2 text-gray-500 text-sm">
+                Analyst Project adalah fitur untuk melacak performa proyek web Anda, termasuk uptime, response time, dan statistik kunjungan.
+              </div>
+            </div>
+            
+            <div class="border-b border-gray-100 pb-4">
+              <button onclick="toggleFaq('faq4')" class="flex items-center justify-between w-full text-left">
+                <p class="font-bold text-black">Laporan Bug atau Saran</p>
+                <i class="fas fa-chevron-down text-gray-400 transition"></i>
+              </button>
+              <div id="faq4" class="hidden mt-2 text-gray-500 text-sm">
+                Kirim laporan melalui email ke support@nissanex.com atau melalui form kontak di halaman Bantuan.
+              </div>
+            </div>
+            
+            <div class="pt-4">
+              <h4 class="font-bold text-black mb-3">Hubungi Kami</h4>
+              <div class="flex gap-3">
+                <a href="mailto:support@nissanex.com" class="flex-1 bg-black text-white text-center py-3 rounded-xl font-bold text-sm hover:bg-zinc-800 transition">
+                  <i class="fas fa-envelope mr-2"></i>Email
+                </a>
+                <a href="#" class="flex-1 border border-black text-black text-center py-3 rounded-xl font-bold text-sm hover:bg-gray-50 transition">
+                  <i class="fab fa-whatsapp mr-2"></i>WhatsApp
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</main>
+
+<!-- ===== MODAL HAPUS AKUN ===== -->
+<div id="modal-delete-account" class="modal-backdrop fixed inset-0 bg-black/50 z-50 hidden items-center justify-center" onclick="closeModalBackdrop(event,'modal-delete-account')">
+  <div class="modal-box bg-white rounded-2xl max-w-md w-full mx-4 p-6 relative" onclick="event.stopPropagation()">
+    <button onclick="closeModal('modal-delete-account')" class="absolute top-4 right-4 text-gray-400 hover:text-black"><i class="fas fa-times text-lg"></i></button>
+    <div class="text-center">
+      <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+        <i class="fas fa-exclamation-triangle text-red-500 text-2xl"></i>
+      </div>
+      <h3 class="text-xl font-bold text-black mb-2">Hapus Akun?</h3>
+      <p class="text-gray-500 text-sm mb-4">Tindakan ini tidak dapat dibatalkan. Semua data Anda akan dihapus secara permanen.</p>
+      <div class="bg-red-50 rounded-xl p-3 mb-4">
+        <p class="text-xs text-red-600">Ketik <strong class="font-bold">HAPUS AKUN</strong> untuk konfirmasi</p>
+        <input type="text" id="delete-confirm-input" class="w-full border border-red-300 rounded-lg p-2 mt-2 text-sm focus:outline-none focus:border-red-500">
+      </div>
+      <div class="flex gap-3">
+        <button onclick="closeModal('modal-delete-account')" class="flex-1 border-2 border-gray-200 py-2 rounded-xl font-bold hover:bg-gray-50">Batal</button>
+        <button onclick="deleteAccount()" class="flex-1 bg-red-500 text-white py-2 rounded-xl font-bold hover:bg-red-600 transition">Hapus Akun</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== TOAST ===== -->
+<div id="toast" class="fixed bottom-4 right-4 z-50"></div>
+
+<!-- Overlay untuk sidebar mobile -->
+<div id="overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/60 z-40 hidden lg:hidden"></div>
+
+<script src="js/menu.js"></script>
+
+<style>
+.toggle-checkbox {
+  appearance: none;
+  width: 44px;
+  height: 24px;
+  background-color: #e5e7eb;
+  border-radius: 999px;
+  position: relative;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.toggle-checkbox:checked {
+  background-color: #000000;
+}
+.toggle-checkbox::before {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  background-color: white;
+  border-radius: 50%;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.2s;
+}
+.toggle-checkbox:checked::before {
+  transform: translateX(20px);
+}
+.setting-tab.active {
+  background-color: #f3f4f6;
+}
+.setting-tab.active i {
+  color: black !important;
+}
+.setting-tab.active .font-bold {
+  color: black;
+}
+.theme-active {
+  border-color: black;
+  background-color: #f9fafb;
+}
+</style>
+
+<script>
+// Fungsi untuk tab settings
+function showSettingTab(tab) {
+  document.querySelectorAll('.setting-panel').forEach(panel => {
+    panel.classList.add('hidden');
+    panel.classList.remove('active');
+  });
+  document.getElementById(`panel-${tab}`).classList.remove('hidden');
+  document.getElementById(`panel-${tab}`).classList.add('active');
+  
+  document.querySelectorAll('.setting-tab').forEach(btn => {
+    btn.classList.remove('active');
+  });
+  document.getElementById(`tab-${tab}`).classList.add('active');
+}
+
+// Toggle FAQ
+function toggleFaq(id) {
+  const el = document.getElementById(id);
+  el.classList.toggle('hidden');
+}
+
+// Load data pengaturan
+async function loadSettings() {
+  if (window.currentUser) {
+    document.getElementById('settings-name').innerText = window.currentUser.name || 'Pengguna';
+    document.getElementById('settings-email').innerText = window.currentUser.email || '';
+    document.getElementById('settings-initial').innerText = (window.currentUser.name || 'U').charAt(0);
+    
+    // Load profile data ke form
+    document.getElementById('set-name').value = window.currentUser.name || '';
+    document.getElementById('set-username').value = window.currentUser.username || '';
+    document.getElementById('set-bio').value = window.currentUser.bio || '';
+    document.getElementById('set-location').value = window.currentUser.location || '';
+    document.getElementById('set-occupation').value = window.currentUser.occupation || '';
+    document.getElementById('set-techstack').value = window.currentUser.techstack || '';
+    document.getElementById('set-interests').value = window.currentUser.interests || '';
+  }
+}
+
+// Save profile settings
+async function saveProfileSettings() {
+  const updates = {
+    name: document.getElementById('set-name').value,
+    username: document.getElementById('set-username').value,
+    bio: document.getElementById('set-bio').value,
+    location: document.getElementById('set-location').value,
+    occupation: document.getElementById('set-occupation').value,
+    techstack: document.getElementById('set-techstack').value,
+    interests: document.getElementById('set-interests').value,
+  };
+  
+  if (window.supabase && window.currentUser) {
+    const { error } = await window.supabase
+      .from('users')
+      .update(updates)
+      .eq('id', window.currentUser.id);
+    
+    if (!error) {
+      showToast('Profil berhasil diperbarui', 'success');
+      Object.assign(window.currentUser, updates);
+    } else {
+      showToast('Gagal memperbarui profil', 'error');
+    }
+  }
+}
+
+// Change password
+async function changePassword() {
+  const oldPass = document.getElementById('old-password').value;
+  const newPass = document.getElementById('new-password').value;
+  const confirmPass = document.getElementById('confirm-password').value;
+  
+  if (!oldPass || !newPass) {
+    showToast('Password lama dan baru harus diisi', 'error');
+    return;
+  }
+  if (newPass !== confirmPass) {
+    showToast('Password baru tidak cocok', 'error');
+    return;
+  }
+  
+  // Implement password change logic with Supabase
+  showToast('Fitur ini akan segera tersedia', 'info');
+}
+
+// Save notification settings
+function saveNotificationSettings() {
+  const settings = {
+    email: document.getElementById('notif-email').checked,
+    comment: document.getElementById('notif-comment').checked,
+    like: document.getElementById('notif-like').checked,
+    follow: document.getElementById('notif-follow').checked,
+    message: document.getElementById('notif-message').checked,
+  };
+  localStorage.setItem('notif_settings', JSON.stringify(settings));
+  showToast('Preferensi notifikasi disimpan', 'success');
+}
+
+// Set theme
+function setTheme(theme) {
+  localStorage.setItem('theme', theme);
+  document.querySelectorAll('[id^="theme-"]').forEach(btn => {
+    btn.classList.remove('border-black', 'bg-gray-50');
+    btn.classList.add('border-gray-200');
+  });
+  document.getElementById(`theme-${theme}`).classList.remove('border-gray-200');
+  document.getElementById(`theme-${theme}`).classList.add('border-black', 'bg-gray-50');
+  showToast(`Tema ${theme} diterapkan`, 'success');
+}
+
+// Export data
+function exportData() {
+  const data = {
+    user: window.currentUser,
+    exports: {
+      date: new Date().toISOString(),
+      version: '1.0'
+    }
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `nissanex_export_${new Date().toISOString().split('T')[0]}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Data berhasil diekspor', 'success');
+}
+
+// Clear cache
+function clearCacheData() {
+  localStorage.clear();
+  sessionStorage.clear();
+  showToast('Cache berhasil dibersihkan', 'success');
+  setTimeout(() => location.reload(), 1500);
+}
+
+// Show delete account modal
+function showDeleteAccountModal() {
+  openModal('modal-delete-account');
+}
+
+// Delete account
+async function deleteAccount() {
+  const confirmText = document.getElementById('delete-confirm-input').value;
+  if (confirmText !== 'HAPUS AKUN') {
+    showToast('Ketik "HAPUS AKUN" untuk konfirmasi', 'error');
+    return;
+  }
+  
+  if (window.supabase && window.currentUser) {
+    const { error } = await window.supabase
+      .from('users')
+      .delete()
+      .eq('id', window.currentUser.id);
+    
+    if (!error) {
+      showToast('Akun berhasil dihapus', 'success');
+      setTimeout(() => {
+        logout();
+        window.location.href = 'login.html';
+      }, 1500);
+    }
+  }
+}
+
+// Logout all devices
+function logoutAllDevices() {
+  localStorage.clear();
+  sessionStorage.clear();
+  showToast('Keluar dari semua perangkat', 'success');
+  setTimeout(() => {
+    window.location.href = 'login.html';
+  }, 1000);
+}
+
+// Show toast
+function showToast(message, type = 'info') {
+  const toast = document.getElementById('toast');
+  toast.innerHTML = `
+    <div class="bg-black text-white px-4 py-2 rounded-lg shadow-lg text-sm flex items-center gap-2">
+      ${type === 'success' ? '<i class="fas fa-check-circle text-green-400"></i>' : 
+        type === 'error' ? '<i class="fas fa-exclamation-circle text-red-400"></i>' : 
+        '<i class="fas fa-info-circle text-blue-400"></i>'}
+      ${message}
+    </div>
+  `;
+  toast.classList.remove('hidden');
+  setTimeout(() => {
+    toast.innerHTML = '';
+  }, 3000);
+}
+
+// Load notification settings from localStorage
+function loadNotificationSettings() {
+  const saved = localStorage.getItem('notif_settings');
+  if (saved) {
+    const settings = JSON.parse(saved);
+    document.getElementById('notif-email').checked = settings.email || false;
+    document.getElementById('notif-comment').checked = settings.comment || false;
+    document.getElementById('notif-like').checked = settings.like || false;
+    document.getElementById('notif-follow').checked = settings.follow || false;
+    document.getElementById('notif-message').checked = settings.message || false;
+  }
+}
+
+// Load theme
+function loadTheme() {
+  const theme = localStorage.getItem('theme') || 'light';
+  setTheme(theme);
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+  loadSettings();
+  loadNotificationSettings();
+  loadTheme();
+});
+</script>
+
+</body>
+</html>

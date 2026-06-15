@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Diskusi — Nissan Ex</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/menu.css">
+<script type="module" src="supabase.js"></script>
+</head>
+<body class="flex min-h-screen">
+
+<!-- SIDEBAR (sama) -->
+<aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-64 bg-black text-white transform -translate-x-full lg:translate-x-0 transition-transform duration-300 shadow-2xl flex flex-col">
+  <div class="p-6 flex items-center gap-3">
+    <div class="w-9 h-9 bg-white rounded-xl flex items-center justify-center">
+      <span class="text-black font-bold text-lg leading-none">N</span>
+    </div>
+    <h1 class="text-xl font-bold tracking-tight brand-lora">Nissan Ex</h1>
+  </div>
+  <nav class="mt-2 px-4 space-y-1 flex-1">
+    <a href="index.html" class="nav-link w-full flex items-center p-3 rounded-xl hover:bg-white/10 transition gap-3 text-sm">
+      <i class="fas fa-home w-5 text-center"></i><span>Beranda</span>
+    </a>
+    <a href="kategori.html" class="nav-link w-full flex items-center p-3 rounded-xl hover:bg-white/10 transition gap-3 text-sm">
+      <i class="fas fa-th-large w-5 text-center"></i><span>Kategori</span>
+    </a>
+    <a href="tren.html" class="nav-link w-full flex items-center p-3 rounded-xl hover:bg-white/10 transition gap-3 text-sm">
+      <i class="fas fa-chart-line w-5 text-center"></i><span>Tren</span>
+    </a>
+    <a href="disimpan.html" class="nav-link w-full flex items-center p-3 rounded-xl hover:bg-white/10 transition gap-3 text-sm">
+      <i class="fas fa-bookmark w-5 text-center"></i><span>Disimpan</span>
+    </a>
+    <a href="diskusi.html" class="nav-link active w-full flex items-center p-3 rounded-xl hover:bg-white/10 transition gap-3 text-sm">
+      <i class="fas fa-comments w-5 text-center"></i><span>Diskusi</span>
+    </a>
+    <a href="analyst.html" class="nav-link w-full flex items-center p-3 rounded-xl hover:bg-white/10 transition gap-3 text-sm">
+      <i class="fas fa-chart-bar w-5 text-center"></i><span>Analyst Project</span>
+    </a>
+  </nav>
+  <div class="px-4 pb-6 border-t border-white/10 pt-4">
+    <a href="pengaturan.html" class="nav-link w-full flex items-center p-3 rounded-xl hover:bg-white/10 transition gap-3 text-sm text-gray-400">
+      <i class="fas fa-cog w-5 text-center"></i><span>Pengaturan</span>
+    </a>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="flex-1 lg:ml-64 p-4 md:p-8 min-h-screen">
+  <header class="mb-8">
+    <div class="lg:hidden flex items-center justify-between gap-4 mb-4">
+      <button onclick="toggleSidebar()" class="p-2 text-black"><i class="fas fa-bars text-xl"></i></button>
+      <span class="text-lg font-bold brand-lora">Nissan Ex</span>
+      <a href="profil.html" class="p-2"><i class="fas fa-user-circle text-xl"></i></a>
+    </div>
+    <div class="hidden lg:flex items-center justify-between">
+      <div class="flex-1 relative max-w-md">
+        <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-500"><i class="fas fa-search"></i></span>
+        <input id="global-search" type="text" oninput="handleSearch(this.value)" placeholder="Cari diskusi..." class="w-full bg-black text-white py-3.5 pl-12 pr-4 rounded-2xl outline-none placeholder:text-gray-500">
+      </div>
+      <a href="profil.html" class="p-3 hover:bg-gray-200 rounded-xl transition">
+        <i class="fas fa-user-circle text-2xl text-black"></i>
+      </a>
+    </div>
+  </header>
+
+  <!-- KONTEN DISKUSI -->
+  <div class="flex items-center justify-between mb-8">
+    <h2 class="text-3xl font-bold">Diskusi Hangat</h2>
+    <button onclick="openPostModal()" class="bg-black text-white px-5 py-2 rounded-xl font-bold text-sm hover:bg-zinc-800 transition flex items-center gap-2">
+      <i class="fas fa-plus"></i> Post Baru
+    </button>
+  </div>
+  <div class="bg-white rounded-[2rem] shadow-xl border border-gray-100 p-6 md:p-10">
+    <div id="diskusi-list" class="space-y-0"></div>
+    <div id="diskusi-empty" class="hidden text-center py-12 text-gray-400">
+      <i class="fas fa-comments text-4xl mb-3 block text-gray-200"></i>
+      <p>Belum ada diskusi. Mulai yang pertama!</p>
+    </div>
+  </div>
+</main>
+
+<!-- MODALS -->
+<div id="modal-post" class="modal-backdrop" onclick="closeModalBackdrop(event,'modal-post')">
+  <div class="modal-box">
+    <button onclick="closeModal('modal-post')" class="absolute top-4 right-4 text-gray-400 hover:text-black"><i class="fas fa-times text-lg"></i></button>
+    <h2 class="text-2xl font-bold mb-5">Buat Postingan Baru</h2>
+    <div class="flex gap-4">
+      <div id="modal-post-avatar" class="w-10 h-10 rounded-xl bg-black flex items-center justify-center text-white font-bold flex-shrink-0 text-sm">?</div>
+      <textarea id="post-content" class="form-input flex-1" rows="4" placeholder="Bagikan pemikiranmu..."></textarea>
+    </div>
+    <div class="flex gap-3 mt-4">
+      <button onclick="closeModal('modal-post')" class="flex-1 border-2 border-gray-200 py-3 rounded-xl font-bold hover:bg-gray-50 transition">Batal</button>
+      <button onclick="submitPost()" class="flex-1 bg-black text-white py-3 rounded-xl font-bold hover:bg-zinc-800 transition">Posting</button>
+    </div>
+  </div>
+</div>
+
+<div id="overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/60 z-40 hidden lg:hidden"></div>
+<div id="toast"></div>
+
+<script src="js/menu.js"></script>
+</body>
+</html>
