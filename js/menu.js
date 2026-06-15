@@ -1,104 +1,206 @@
 // Supabase functions tersedia via window._SB (diload oleh module script di head)
 // Semua fungsi diakses sebagai: window._SB.getCurrentUser(), dll
- 
-// User yang sedang login (diisi saat init)
+
+// ============================
+// GLOBAL STATE (memory only, no localStorage)
+// ============================
 let CURRENT_USER = null
 let CURRENT_PROFILE = null
- 
+
+let categoriesCache = []
+let contentsCache = []
+let postsCache = []
+let savesCache = []           // array of target_id strings
+let linkwebsCache = []
+let projectsCache = []
+
 // ============================
-// GLOBAL CONSTANTS
+// DATA LOADING (from Supabase)
 // ============================
-const fileIcons = {image:'fas fa-image',video:'fas fa-file-video',pdf:'fas fa-file-pdf',doc:'fas fa-file-word',docx:'fas fa-file-word'};
- 
-// ============================
-// DEFAULT CATEGORIES (fallback jika Supabase kosong)
-// ============================
-const DEFAULT_CATEGORIES = [
-  { id:'cat-tech',   name:'Tech',    slug:'tech',    icon:'fas fa-microchip',     iconUrl:'' },
-  { id:'cat-politik',name:'Politik', slug:'politik', icon:'fas fa-landmark',      iconUrl:'' },
-  { id:'cat-uiux',   name:'UI/UX',   slug:'uiux',    icon:'fas fa-pen-nib',       iconUrl:'' },
-  { id:'cat-cyber',  name:'Cyber',   slug:'cyber',   icon:'fas fa-shield-halved', iconUrl:'' },
-  { id:'cat-game',   name:'Game',    slug:'game',    icon:'fas fa-gamepad',       iconUrl:'' },
-];
- 
-// ============================
-// DATABASE (localStorage cache + Supabase)
-// ============================
-const DB = {
-  get(key) { try { return JSON.parse(localStorage.getItem('nissanex_'+key)) || null; } catch(e){ return null; } },
-  set(key, val) { localStorage.setItem('nissanex_'+key, JSON.stringify(val)); },
-  getArr(key) { return this.get(key) || []; },
-  pushArr(key, item) { const arr = this.getArr(key); arr.unshift(item); this.set(key, arr); return arr; },
-  uuid() { return crypto.randomUUID(); },
- 
-  async fetchCategories() {
-    try {
-      const data = await window._SB.getCategories(CURRENT_USER.id)
-      const mapped = data.map(c => ({
-        id: c.id, name: c.title, slug: c.title?.toLowerCase(),
-        icon: c.icon || 'fas fa-folder', iconUrl: c.file_url || ''
-      }))
-      const final = mapped.length > 0 ? mapped : DEFAULT_CATEGORIES
-      this.set('categories', final)
-      return final
-    } catch(e) {
-      this.set('categories', DEFAULT_CATEGORIES)
-      return DEFAULT_CATEGORIES
+
+async function loadCategories() {
+  if (!CURRENT_USER) return []
+  try {
+    const data = await window._SB.getCategories(CURRENT_USER.id)
+    categoriesCache = data.map(c => ({
+      id: c.id,
+      name: c.title,
+      slug: c.title?.toLowerCase(),
+      icon: c.icon || 'fas fa-folder',
+      iconUrl: c.file_url || ''
+    }))
+    if (categoriesCache.length === 0) {
+      await seedDefaultCategories()
+      return loadCategories()
     }
-  },
- 
-  async fetchContents() {
-    if (!CURRENT_USER) return []
-    try {
-      const data = await window._SB.getContents(CURRENT_USER.id)
-      const mapped = data.map(c => ({
-        id: c.id, userId: c.user_id, categoryId: c.category_id,
-        title: c.name, description: c.description,
-        authorName: c.users?.username || CURRENT_PROFILE?.username || '',
-        authorAvatar: c.users?.avatar_url || CURRENT_PROFILE?.avatar_url || '',
-        fileType: c.icon_type || 'doc', thumbUrl: c.preview_image || '',
-        fileData: c.file_url || null, fileName: c.file_name || null, fileSize: c.file_size || null,
-        webUrl: c.display_url || null,
-        views: c.views || 0, likes: c.likes || 0, bookmarked: false,
-        createdAt: c.created_at
-      }))
-      this.set('contents', mapped)
-      return mapped
-    } catch(e) { return this.getArr('contents') }
-  },
- 
-  async fetchPosts() {
-    try {
-      const data = await window._SB.getPosts()
-      const mapped = data.map(p => ({
-        id: p.id, userId: p.user_id,
-        userName: p.users?.username || 'Pengguna',
-        userAvatar: p.users?.avatar_url || '',
-        content: p.content, likes: p.likes_count || 0, comments: p.comments_count || 0, shares: p.shares_count || 0,
-        createdAt: p.created_at
-      }))
-      this.set('discussions', mapped)
-      return mapped
-    } catch(e) { return this.getArr('discussions') }
-  },
- 
-  async fetchSaves() {
-    if (!CURRENT_USER) return []
-    try {
-      const data = await window._SB.getSaves(CURRENT_USER.id)
-      this.set('saves', data)
-      // Update bookmark status di contents
-      const contents = this.getArr('contents')
-      const savedIds = data.filter(s => s.target_type === 'content').map(s => s.target_id)
-      contents.forEach(c => { c.bookmarked = savedIds.includes(c.id) })
-      this.set('contents', contents)
-      return data
-    } catch(e) { return this.getArr('saves') }
+    return categoriesCache
+  } catch(e) {
+    console.warn('loadCategories error', e)
+    categoriesCache = []
+    return []
   }
-};
- 
+}
+
+async function loadContents() {
+  if (!CURRENT_USER) return []
+  try {
+    const data = await window._SB.getContents(CURRENT_USER.id)
+    contentsCache = data.map(c => ({
+      id: c.id,
+      userId: c.user_id,
+      categoryId: c.category_id,
+      title: c.name,
+      description: c.description,
+      authorName: c.users?.username || CURRENT_PROFILE?.username || '',
+      authorAvatar: c.users?.avatar_url || CURRENT_PROFILE?.avatar_url || '',
+      fileType: c.icon_type || 'doc',
+      thumbUrl: c.preview_image || '',
+      fileData: c.file_url || null,
+      fileName: c.file_name || null,
+      fileSize: c.file_size || null,
+      webUrl: c.display_url || null,
+      views: c.views || 0,
+      likes: c.likes || 0,
+      bookmarked: false,  // will be updated from savesCache
+      createdAt: c.created_at,
+      comments: c.comments || [],
+      ratings: c.ratings || []
+    }))
+    // update bookmarked flag
+    for (let c of contentsCache) {
+      c.bookmarked = savesCache.includes(c.id)
+    }
+    return contentsCache
+  } catch(e) {
+    console.warn('loadContents error', e)
+    contentsCache = []
+    return []
+  }
+}
+
+async function loadPosts() {
+  try {
+    const data = await window._SB.getPosts()
+    postsCache = data.map(p => ({
+      id: p.id,
+      userId: p.user_id,
+      userName: p.users?.username || 'Pengguna',
+      userAvatar: p.users?.avatar_url || '',
+      content: p.content,
+      likes: p.likes_count || 0,
+      comments: p.comments_count || 0,
+      shares: p.shares_count || 0,
+      createdAt: p.created_at
+    }))
+    return postsCache
+  } catch(e) {
+    console.warn('loadPosts error', e)
+    postsCache = []
+    return []
+  }
+}
+
+async function loadSaves() {
+  if (!CURRENT_USER) return []
+  try {
+    const data = await window._SB.getSaves(CURRENT_USER.id)
+    savesCache = data.filter(s => s.target_type === 'content').map(s => s.target_id)
+    // update bookmarked di contentsCache
+    for (let c of contentsCache) {
+      c.bookmarked = savesCache.includes(c.id)
+    }
+    return savesCache
+  } catch(e) {
+    console.warn('loadSaves error', e)
+    savesCache = []
+    return []
+  }
+}
+
+async function loadLinkwebs() {
+  if (!CURRENT_USER) return []
+  try {
+    // asumsikan ada window._SB.getRefs(userId)
+    const data = await window._SB.getRefs(CURRENT_USER.id)
+    linkwebsCache = data.map(l => ({
+      id: l.id,
+      userId: l.user_id,
+      categoryId: l.category_id,
+      title: l.theme,
+      url: l.language,
+      description: l.description || '',
+      iconUrl: l.icon_url || '',
+      status: l.status || 'active',
+      bookmarked: false,
+      createdAt: l.created_at
+    }))
+    return linkwebsCache
+  } catch(e) {
+    console.warn('loadLinkwebs error', e)
+    linkwebsCache = []
+    return []
+  }
+}
+
+async function loadProjects() {
+  if (!CURRENT_USER) return []
+  try {
+    const data = await window._SB.getProjects(CURRENT_USER.id)
+    projectsCache = data.map(p => ({
+      id: p.id,
+      userId: p.user_id,
+      name: p.name,
+      description: p.description,
+      deployUrl: p.deploy_url,
+      techStack: p.tech_stack,
+      status: p.status,
+      visitCount: p.visit_count || 0,
+      performanceScore: p.performance_score || 80,
+      uptimePercent: p.uptime_percent || 99,
+      lastDeployed: p.last_deployed,
+      createdAt: p.created_at
+    }))
+    return projectsCache
+  } catch(e) {
+    console.warn('loadProjects error', e)
+    projectsCache = []
+    return []
+  }
+}
+
+async function loadAllData() {
+  if (!CURRENT_USER) return
+  await Promise.all([
+    loadCategories(),
+    loadContents(),
+    loadPosts(),
+    loadSaves(),
+    loadLinkwebs(),
+    loadProjects()
+  ])
+}
+
 // ============================
-// INIT & SEED (Supabase)
+// SEED DEFAULT CATEGORIES
+// ============================
+async function seedDefaultCategories() {
+  if (!CURRENT_USER) return
+  const defaultCats = [
+    { title: 'Tech', icon: 'fas fa-microchip', file_url: '' },
+    { title: 'Politik', icon: 'fas fa-landmark', file_url: '' },
+    { title: 'UI/UX', icon: 'fas fa-pen-nib', file_url: '' },
+    { title: 'Cyber', icon: 'fas fa-shield-halved', file_url: '' },
+    { title: 'Game', icon: 'fas fa-gamepad', file_url: '' }
+  ]
+  for (let cat of defaultCats) {
+    try {
+      await window._SB.addCategory(CURRENT_USER.id, cat)
+    } catch(e) { console.warn(e) }
+  }
+}
+
+// ============================
+// INIT & AUTH
 // ============================
 async function init() {
   if (!window._SB_READY) {
@@ -106,19 +208,25 @@ async function init() {
     return
   }
 
-  _ensureSBMethods();
+  ensureSBMethods()
 
   window._SB.onAuthChange(async (event, user) => {
     if (event === 'SIGNED_IN') {
       CURRENT_USER = user
       try { CURRENT_PROFILE = await window._SB.getProfile(user.id) } catch(e) { CURRENT_PROFILE = null }
-      await seedDataSupabase()
+      await loadAllData()
       updateSidebarUser()
       closeAuthModal()
       renderPage(getCurrentPage())
     } else if (event === 'SIGNED_OUT') {
       CURRENT_USER = null
       CURRENT_PROFILE = null
+      categoriesCache = []
+      contentsCache = []
+      postsCache = []
+      savesCache = []
+      linkwebsCache = []
+      projectsCache = []
       updateSidebarUser()
       renderBeranda()
     }
@@ -126,15 +234,14 @@ async function init() {
 
   try {
     CURRENT_USER = await window._SB.getCurrentUser()
+    if (CURRENT_USER) {
+      CURRENT_PROFILE = await window._SB.getProfile(CURRENT_USER.id)
+      await loadAllData()
+    }
   } catch(e) {
     CURRENT_USER = null
   }
 
-  if (CURRENT_USER) {
-    try { CURRENT_PROFILE = await window._SB.getProfile(CURRENT_USER.id) } catch(e) { CURRENT_PROFILE = null }
-  }
-
-  await seedDataSupabase()
   updateSidebarUser()
   renderBeranda()
 }
@@ -183,7 +290,7 @@ function updateSidebarUser() {
 }
 
 // ============================
-// AUTH MODAL
+// AUTH MODAL (unchanged)
 // ============================
 function openAuthModal(tab = 'login') {
   let modal = document.getElementById('modal-auth')
@@ -202,10 +309,10 @@ function closeAuthModal() {
 }
 
 function switchAuthTab(tab) {
-  const loginPanel  = document.getElementById('auth-login-panel')
-  const regPanel    = document.getElementById('auth-reg-panel')
-  const loginTab    = document.getElementById('auth-tab-login')
-  const regTab      = document.getElementById('auth-tab-reg')
+  const loginPanel = document.getElementById('auth-login-panel')
+  const regPanel = document.getElementById('auth-reg-panel')
+  const loginTab = document.getElementById('auth-tab-login')
+  const regTab = document.getElementById('auth-tab-reg')
   if (!loginPanel) return
   loginPanel.classList.toggle('hidden', tab !== 'login')
   regPanel.classList.toggle('hidden', tab !== 'register')
@@ -230,50 +337,21 @@ function buildAuthModal() {
       </div>
       <div id="auth-login-panel">
         <div class="space-y-4">
-          <div>
-            <label class="form-label">Email</label>
-            <input id="auth-login-email" type="email" class="form-input" placeholder="email@kamu.com">
-          </div>
-          <div>
-            <label class="form-label">Password</label>
-            <div class="relative">
-              <input id="auth-login-pass" type="password" class="form-input pr-10" placeholder="Password...">
-              <button type="button" onclick="togglePassVis('auth-login-pass')" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black">
-                <i class="fas fa-eye text-sm"></i>
-              </button>
-            </div>
-          </div>
+          <div><label class="form-label">Email</label><input id="auth-login-email" type="email" class="form-input" placeholder="email@kamu.com"></div>
+          <div><label class="form-label">Password</label><div class="relative"><input id="auth-login-pass" type="password" class="form-input pr-10" placeholder="Password..."><button type="button" onclick="togglePassVis('auth-login-pass')" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black"><i class="fas fa-eye text-sm"></i></button></div></div>
           <p id="auth-login-err" class="text-red-500 text-xs hidden"></p>
         </div>
-        <button onclick="doLogin()" class="w-full bg-black text-white py-3 rounded-xl font-bold hover:bg-zinc-800 transition mt-5 flex items-center justify-center gap-2" id="btn-login">
-          <i class="fas fa-sign-in-alt"></i> Masuk
-        </button>
+        <button onclick="doLogin()" class="w-full bg-black text-white py-3 rounded-xl font-bold hover:bg-zinc-800 transition mt-5 flex items-center justify-center gap-2" id="btn-login"><i class="fas fa-sign-in-alt"></i> Masuk</button>
         <p class="text-center text-sm text-gray-500 mt-4">Belum punya akun? <button onclick="switchAuthTab('register')" class="font-bold text-black underline">Daftar sekarang</button></p>
       </div>
       <div id="auth-reg-panel" class="hidden">
         <div class="space-y-4">
-          <div>
-            <label class="form-label">Username</label>
-            <input id="auth-reg-user" type="text" class="form-input" placeholder="username kamu...">
-          </div>
-          <div>
-            <label class="form-label">Email</label>
-            <input id="auth-reg-email" type="email" class="form-input" placeholder="email@kamu.com">
-          </div>
-          <div>
-            <label class="form-label">Password</label>
-            <div class="relative">
-              <input id="auth-reg-pass" type="password" class="form-input pr-10" placeholder="Min. 6 karakter">
-              <button type="button" onclick="togglePassVis('auth-reg-pass')" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black">
-                <i class="fas fa-eye text-sm"></i>
-              </button>
-            </div>
-          </div>
+          <div><label class="form-label">Username</label><input id="auth-reg-user" type="text" class="form-input" placeholder="username kamu..."></div>
+          <div><label class="form-label">Email</label><input id="auth-reg-email" type="email" class="form-input" placeholder="email@kamu.com"></div>
+          <div><label class="form-label">Password</label><div class="relative"><input id="auth-reg-pass" type="password" class="form-input pr-10" placeholder="Min. 6 karakter"><button type="button" onclick="togglePassVis('auth-reg-pass')" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black"><i class="fas fa-eye text-sm"></i></button></div></div>
           <p id="auth-reg-err" class="text-red-500 text-xs hidden"></p>
         </div>
-        <button onclick="doRegister()" class="w-full bg-black text-white py-3 rounded-xl font-bold hover:bg-zinc-800 transition mt-5 flex items-center justify-center gap-2" id="btn-register">
-          <i class="fas fa-user-plus"></i> Buat Akun
-        </button>
+        <button onclick="doRegister()" class="w-full bg-black text-white py-3 rounded-xl font-bold hover:bg-zinc-800 transition mt-5 flex items-center justify-center gap-2" id="btn-register"><i class="fas fa-user-plus"></i> Buat Akun</button>
         <p class="text-center text-sm text-gray-500 mt-4">Sudah punya akun? <button onclick="switchAuthTab('login')" class="font-bold text-black underline">Masuk</button></p>
       </div>
     </div>
@@ -287,9 +365,9 @@ function togglePassVis(inputId) {
 
 async function doLogin() {
   const email = document.getElementById('auth-login-email').value.trim()
-  const pass  = document.getElementById('auth-login-pass').value
+  const pass = document.getElementById('auth-login-pass').value
   const errEl = document.getElementById('auth-login-err')
-  const btn   = document.getElementById('btn-login')
+  const btn = document.getElementById('btn-login')
   errEl.classList.add('hidden')
   if (!email || !pass) { errEl.textContent = 'Email dan password wajib diisi.'; errEl.classList.remove('hidden'); return }
   btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...'
@@ -304,10 +382,10 @@ async function doLogin() {
 
 async function doRegister() {
   const username = document.getElementById('auth-reg-user').value.trim()
-  const email    = document.getElementById('auth-reg-email').value.trim()
-  const pass     = document.getElementById('auth-reg-pass').value
-  const errEl    = document.getElementById('auth-reg-err')
-  const btn      = document.getElementById('btn-register')
+  const email = document.getElementById('auth-reg-email').value.trim()
+  const pass = document.getElementById('auth-reg-pass').value
+  const errEl = document.getElementById('auth-reg-err')
+  const btn = document.getElementById('btn-register')
   errEl.classList.add('hidden')
   if (!username || !email || !pass) { errEl.textContent = 'Semua field wajib diisi.'; errEl.classList.remove('hidden'); return }
   if (pass.length < 6) { errEl.textContent = 'Password minimal 6 karakter.'; errEl.classList.remove('hidden'); return }
@@ -335,48 +413,12 @@ async function logout() {
     toast('⚠️ Gagal logout: ' + e.message)
   }
 }
- 
-async function seedDataSupabase() {
-  await DB.fetchCategories()
-  await DB.fetchContents()
-  await DB.fetchPosts()
-  await DB.fetchSaves()
- 
-  if (CURRENT_PROFILE) {
-    DB.set('user_profile', {
-      name: CURRENT_PROFILE.username,
-      username: CURRENT_PROFILE.username,
-      bio: CURRENT_PROFILE.bio || '',
-      location: CURRENT_PROFILE.location || '',
-      occupation: CURRENT_PROFILE.occupation || '',
-      techStack: CURRENT_PROFILE.tech_stack || '',
-      interests: CURRENT_PROFILE.interests || '',
-      avatarUrl: CURRENT_PROFILE.avatar_url || '',
-      coverUrl: CURRENT_PROFILE.cover_url || '',
-      followers: 0, following: 0,
-    })
-  }
- 
-  if (!DB.get('projects')) {
-    DB.set('projects', [
-      {id:'p1',userId:'u1',name:'OYBook Platform',description:'Web Novel Platform',deployUrl:'https://oybook.vercel.app',techStack:'Next.js, Supabase',status:'live',visitCount:1245,performanceScore:95,uptimePercent:99,lastDeployed: new Date(Date.now()-86400000*2).toISOString()},
-      {id:'p2',userId:'u1',name:'Portfolio Website',description:'Dark Luxury Design',deployUrl:'https://sanpelong.dev',techStack:'HTML/CSS/JS',status:'live',visitCount:532,performanceScore:88,uptimePercent:98,lastDeployed: new Date(Date.now()-86400000*7).toISOString()},
-      {id:'p3',userId:'u1',name:'Rangership Game',description:'Space Flight Simulator',deployUrl:'',techStack:'Godot 4, GDScript',status:'development',visitCount:0,performanceScore:72,uptimePercent:0,lastDeployed:null},
-    ])
-  }
-  if (!DB.get('linkwebs')) {
-    DB.set('linkwebs', [
-      {id:'lk1',userId:'u1',categoryId:'cat-tech',title:'OYBook Platform',url:'https://oybook.vercel.app',description:'Platform web novel dengan monetisasi',iconUrl:'',status:'active',bookmarked:false,createdAt:new Date(Date.now()-86400000).toISOString()},
-      {id:'lk2',userId:'u1',categoryId:'cat-uiux',title:'Portfolio Website',url:'https://sanpelong.dev',description:'Dark luxury personal site',iconUrl:'',status:'active',bookmarked:false,createdAt:new Date(Date.now()-86400000*3).toISOString()},
-    ])
-  }
-}
- 
+
 // ============================
-// TEMP FILE STORAGE
+// TEMP FILE STORAGE (memory only)
 // ============================
-let tempFiles = { main:null, thumb:null, thumbFile:null, linkIcon:null };
- 
+let tempFiles = { main: null, thumb: null, thumbFile: null, linkIcon: null }
+
 // ============================
 // NAVIGATION
 // ============================
@@ -386,21 +428,21 @@ function navigateTo(pageId) {
     toast('⚠️ Login dulu untuk mengakses halaman ini')
     return
   }
-  document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
-  const target = document.getElementById('page-'+pageId);
-  if (target) target.classList.add('active');
+  document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'))
+  const target = document.getElementById('page-'+pageId)
+  if (target) target.classList.add('active')
   document.querySelectorAll('.nav-link').forEach(l => {
-    l.classList.remove('active');
-    if (l.dataset.page === pageId) l.classList.add('active');
-  });
+    l.classList.remove('active')
+    if (l.dataset.page === pageId) l.classList.add('active')
+  })
   if (window.innerWidth < 1024) {
-    document.getElementById('sidebar').classList.add('-translate-x-full');
-    document.getElementById('overlay').classList.add('hidden');
+    document.getElementById('sidebar').classList.add('-translate-x-full')
+    document.getElementById('overlay').classList.add('hidden')
   }
-  window.scrollTo({top:0,behavior:'smooth'});
-  renderPage(pageId);
+  window.scrollTo({top:0,behavior:'smooth'})
+  renderPage(pageId)
 }
- 
+
 function renderPage(pageId) {
   const map = {
     beranda: renderBeranda,
@@ -411,76 +453,69 @@ function renderPage(pageId) {
     analyst: renderAnalyst,
     profil: renderProfil,
     pengaturan: renderPengaturan,
-  };
-  if (map[pageId]) map[pageId]();
+  }
+  if (map[pageId]) map[pageId]()
 }
- 
+
 function toggleSidebar() {
-  const sb = document.getElementById('sidebar');
-  const ov = document.getElementById('overlay');
-  sb.classList.toggle('-translate-x-full');
-  ov.classList.toggle('hidden');
+  const sb = document.getElementById('sidebar')
+  const ov = document.getElementById('overlay')
+  sb.classList.toggle('-translate-x-full')
+  ov.classList.toggle('hidden')
 }
- 
+
 // ============================
-// RENDER FUNCTIONS
+// RENDER FUNCTIONS (use caches)
 // ============================
- 
+
 const CAT_SVG = {
   'cat-tech': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="w-10 h-10"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/><path d="M6 8h.01M10 8h4"/></svg>`,
   'cat-politik': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="w-10 h-10"><path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 10v5M12 10v5M16 10v5"/></svg>`,
   'cat-uiux': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="w-10 h-10"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M9 21V9"/></svg>`,
   'cat-cyber': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="w-10 h-10"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>`,
   'cat-game': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="w-10 h-10"><rect x="2" y="6" width="20" height="12" rx="4"/><path d="M6 12h4M8 10v4M15 11h.01M17 13h.01"/></svg>`,
-};
- 
-function getCatSvg(cat) {
-  if (CAT_SVG[cat.id]) return CAT_SVG[cat.id];
-  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="w-10 h-10"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18"/></svg>`;
 }
- 
+
+function getCatSvg(cat) {
+  if (CAT_SVG[cat.id]) return CAT_SVG[cat.id]
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="w-10 h-10"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18"/></svg>`
+}
+
 const CAT_GRADIENT = {
-  'cat-tech':    'from-blue-600 to-blue-900',
+  'cat-tech': 'from-blue-600 to-blue-900',
   'cat-politik': 'from-red-600 to-red-900',
-  'cat-uiux':    'from-purple-600 to-purple-900',
-  'cat-cyber':   'from-emerald-600 to-emerald-900',
-  'cat-game':    'from-orange-500 to-orange-900',
-};
- 
+  'cat-uiux': 'from-purple-600 to-purple-900',
+  'cat-cyber': 'from-emerald-600 to-emerald-900',
+  'cat-game': 'from-orange-500 to-orange-900',
+}
+
 function renderBeranda() {
-  const cats = DB.getArr('categories').length > 0 ? DB.getArr('categories') : DEFAULT_CATEGORIES;
-  const iconGrid = document.getElementById('category-icons');
-  
+  const cats = categoriesCache.length ? categoriesCache : []
+  const iconGrid = document.getElementById('category-icons')
   iconGrid.innerHTML = cats.map(c => {
-    const grad = CAT_GRADIENT[c.id] || 'from-zinc-700 to-zinc-900';
+    const grad = CAT_GRADIENT[c.id] || 'from-zinc-700 to-zinc-900'
     return `
     <div onclick="navigateTo('kategori')"
       class="cursor-pointer rounded-2xl bg-gradient-to-br ${grad} shadow-lg hover:scale-105 hover:shadow-xl active:scale-95 transition-all select-none overflow-hidden"
       style="min-height:120px;">
       <div class="flex flex-col items-center justify-center gap-3 w-full h-full p-4 text-white" style="min-height:120px;">
-        ${c.iconUrl
-          ? `<img src="${c.iconUrl}" class="w-10 h-10 object-cover rounded-xl">`
-          : c.icon && c.icon.startsWith('fas')
-            ? `<i class="${c.icon} text-3xl"></i>`
-            : getCatSvg(c)}
+        ${c.iconUrl ? `<img src="${c.iconUrl}" class="w-10 h-10 object-cover rounded-xl">` : (c.icon && c.icon.startsWith('fas') ? `<i class="${c.icon} text-3xl"></i>` : getCatSvg(c))}
         <span class="text-sm font-bold tracking-wide drop-shadow">${c.name}</span>
       </div>
-    </div>`;
-  }).join('');
-  
-  const contents = DB.getArr('contents');
-  const grid = document.getElementById('beranda-content-grid');
-  
-  if (!contents.length) {
-    grid.innerHTML = `<div class="col-span-6 text-center py-12 text-gray-400"><i class="fas fa-folder-open text-4xl mb-3 block text-gray-200"></i><p>Belum ada konten. Upload pertama Anda!</p></div>`;
-    return;
+    </div>`
+  }).join('')
+
+  const grid = document.getElementById('beranda-content-grid')
+  if (!contentsCache.length) {
+    grid.innerHTML = `<div class="col-span-6 text-center py-12 text-gray-400"><i class="fas fa-folder-open text-4xl mb-3 block text-gray-200"></i><p>Belum ada konten. Upload pertama Anda!</p></div>`
+    return
   }
-  grid.innerHTML = contents.slice(0,6).map(c => contentCard(c)).join('');
+  grid.innerHTML = contentsCache.slice(0,6).map(c => contentCard(c)).join('')
 }
- 
+
 function contentCard(c) {
-  const fileIconsMap = {image:'fas fa-image',video:'fas fa-video',pdf:'fas fa-file-pdf',doc:'fas fa-file-word',docx:'fas fa-file-word'};
-  const fileIcon = fileIconsMap[c.fileType] || 'fas fa-file';
+  const fileIconsMap = {image:'fas fa-image',video:'fas fa-video',pdf:'fas fa-file-pdf',doc:'fas fa-file-word',docx:'fas fa-file-word'}
+  const fileIcon = fileIconsMap[c.fileType] || 'fas fa-file'
   return `
     <div>
       <div class="content-card group cursor-pointer" onclick="showContentDetail('${c.id}')" onmouseenter="showCardDesc(this)" onmouseleave="hideCardDesc(this)">
@@ -509,16 +544,16 @@ function contentCard(c) {
         <p>${c.views} views · ${c.likes} suka</p>
       </div>
     </div>
-  `;
+  `
 }
- 
+
 function renderKategori() {
-  const cats = DB.getArr('categories');
-  const pills = document.getElementById('cat-filter-pills');
-  let activeCat = null;
- 
+  const cats = categoriesCache
+  const pills = document.getElementById('cat-filter-pills')
+  let activeCat = null
+
   function renderPills(selected) {
-    activeCat = selected;
+    activeCat = selected
     pills.innerHTML = `
       <button onclick="filterKategori(null)" class="px-4 py-2 rounded-full text-sm font-bold border-2 transition ${!selected?'bg-black text-white border-black':'border-gray-300 text-gray-600 hover:border-black'}">
         Semua
@@ -529,30 +564,30 @@ function renderKategori() {
           ${c.name}
         </button>
       `).join('')}
-    `;
+    `
   }
- 
+
   window.filterKategori = function(catId) {
-    renderPills(catId);
-    const contents = DB.getArr('contents').filter(c => !catId || c.categoryId===catId);
-    const links = DB.getArr('linkwebs').filter(l => !catId || l.categoryId===catId);
-    const label = catId ? cats.find(c=>c.id===catId)?.name : 'Semua';
-    document.getElementById('cat-result-label').textContent = label+' — Konten';
-    document.getElementById('kategori-content-grid').innerHTML = contents.length
-      ? contents.map(c=>contentCard(c)).join('')
-      : `<div class="col-span-4 text-gray-400 py-8 text-sm">Belum ada konten di kategori ini.</div>`;
-    document.getElementById('kategori-links-grid').innerHTML = links.length
-      ? `<p class="col-span-2 text-sm font-bold text-gray-500 uppercase tracking-wider mb-2">Link Web</p>`+links.map(l=>linkCard(l)).join('')
-      : '';
-  };
- 
-  renderPills(null);
-  window.filterKategori(null);
+    renderPills(catId)
+    const filteredContents = contentsCache.filter(c => !catId || c.categoryId === catId)
+    const filteredLinks = linkwebsCache.filter(l => !catId || l.categoryId === catId)
+    const label = catId ? cats.find(c=>c.id===catId)?.name : 'Semua'
+    document.getElementById('cat-result-label').textContent = label+' — Konten'
+    document.getElementById('kategori-content-grid').innerHTML = filteredContents.length
+      ? filteredContents.map(c=>contentCard(c)).join('')
+      : `<div class="col-span-4 text-gray-400 py-8 text-sm">Belum ada konten di kategori ini.</div>`
+    document.getElementById('kategori-links-grid').innerHTML = filteredLinks.length
+      ? `<p class="col-span-2 text-sm font-bold text-gray-500 uppercase tracking-wider mb-2">Link Web</p>`+filteredLinks.map(l=>linkCard(l)).join('')
+      : ''
+  }
+
+  renderPills(null)
+  window.filterKategori(null)
 }
- 
+
 function linkCard(l) {
-  const statusBadge = {active:'badge-green',development:'badge-yellow',archived:'badge-blue'}[l.status]||'badge-blue';
-  const statusLabel = {active:'Live',development:'Dev',archived:'Arsip'}[l.status]||l.status;
+  const statusBadge = {active:'badge-green',development:'badge-yellow',archived:'badge-blue'}[l.status]||'badge-blue'
+  const statusLabel = {active:'Live',development:'Dev',archived:'Arsip'}[l.status]||l.status
   return `
     <div class="link-card" onclick="window.open('${l.url}','_blank')">
       <div class="link-icon">
@@ -568,17 +603,17 @@ function linkCard(l) {
       </div>
       <i class="fas fa-external-link-alt text-gray-300 text-sm flex-shrink-0"></i>
     </div>
-  `;
+  `
 }
- 
+
 function renderTren() {
-  const contents = DB.getArr('contents').sort((a,b)=>b.views-a.views);
-  const el = document.getElementById('tren-list');
-  if (!contents.length) {
-    el.innerHTML = `<div class="text-center py-16 text-gray-400"><i class="fas fa-chart-line text-5xl mb-3 block text-gray-200"></i><p>Belum ada konten trending.</p></div>`;
-    return;
+  const sorted = [...contentsCache].sort((a,b)=>b.views - a.views)
+  const el = document.getElementById('tren-list')
+  if (!sorted.length) {
+    el.innerHTML = `<div class="text-center py-16 text-gray-400"><i class="fas fa-chart-line text-5xl mb-3 block text-gray-200"></i><p>Belum ada konten trending.</p></div>`
+    return
   }
-  el.innerHTML = contents.map((c,i) => `
+  el.innerHTML = sorted.map((c,i) => `
     <div class="bg-white rounded-2xl border border-gray-100 p-5 flex gap-5 items-center hover:shadow-md transition cursor-pointer" onclick="showContentDetail('${c.id}')">
       <span class="rank-num w-8 text-center">${i+1}</span>
       <div class="w-14 h-14 rounded-xl bg-zinc-900 flex items-center justify-center flex-shrink-0 overflow-hidden">
@@ -596,31 +631,30 @@ function renderTren() {
         <i class="${c.bookmarked?'fas text-black':'far'} fa-bookmark text-lg"></i>
       </button>
     </div>
-  `).join('');
+  `).join('')
 }
- 
+
 function renderDisimpan() {
-  const contents = DB.getArr('contents').filter(c=>c.bookmarked);
-  const links = DB.getArr('linkwebs').filter(l=>l.bookmarked);
-  const grid = document.getElementById('disimpan-grid');
-  const empty = document.getElementById('disimpan-empty');
-  const all = [...contents, ...links];
+  const savedContents = contentsCache.filter(c => c.bookmarked)
+  const savedLinks = linkwebsCache.filter(l => l.bookmarked)
+  const grid = document.getElementById('disimpan-grid')
+  const empty = document.getElementById('disimpan-empty')
+  const all = [...savedContents, ...savedLinks]
   if (!all.length) { grid.innerHTML=''; empty.classList.remove('hidden'); return; }
-  empty.classList.add('hidden');
+  empty.classList.add('hidden')
   grid.innerHTML = [
-    ...contents.map(c=>contentCard(c)),
-    ...links.map(l=>`<div class="col-span-1">${linkCard(l)}</div>`)
-  ].join('');
+    ...savedContents.map(c=>contentCard(c)),
+    ...savedLinks.map(l=>`<div class="col-span-1">${linkCard(l)}</div>`)
+  ].join('')
 }
- 
+
 function renderDiskusi() {
-  const posts = DB.getArr('discussions');
-  const list = document.getElementById('diskusi-list');
-  const empty = document.getElementById('diskusi-empty');
-  if (!posts.length) { list.innerHTML=''; empty.classList.remove('hidden'); return; }
-  empty.classList.add('hidden');
-  list.innerHTML = posts.map(p => {
-    const isOwner = CURRENT_USER && p.userId === CURRENT_USER.id;
+  const list = document.getElementById('diskusi-list')
+  const empty = document.getElementById('diskusi-empty')
+  if (!postsCache.length) { list.innerHTML=''; empty.classList.remove('hidden'); return; }
+  empty.classList.add('hidden')
+  list.innerHTML = postsCache.map(p => {
+    const isOwner = CURRENT_USER && p.userId === CURRENT_USER.id
     return `
     <div class="post-item" id="post-${p.id}">
       <div class="flex gap-4 mb-3">
@@ -657,24 +691,20 @@ function renderDiskusi() {
         </button>
       </div>
     </div>
-  `}).join('');
-
-  // Tutup dropdown kalau klik di luar
-  document.addEventListener('click', closeAllPostMenus, { once: true });
+  `}).join('')
+  document.addEventListener('click', closeAllPostMenus, { once: true })
 }
- 
+
 function renderAnalyst() {
-  const projects = DB.getArr('projects');
-  const list = document.getElementById('projects-list');
-  const perfList = document.getElementById('perf-list');
- 
-  if (!projects.length) {
-    list.innerHTML = `<p class="text-gray-400 text-sm py-4 text-center">Belum ada project. Tambah yang pertama!</p>`;
-    perfList.innerHTML = '';
+  const list = document.getElementById('projects-list')
+  const perfList = document.getElementById('perf-list')
+  if (!projectsCache.length) {
+    list.innerHTML = `<p class="text-gray-400 text-sm py-4 text-center">Belum ada project. Tambah yang pertama!</p>`
+    perfList.innerHTML = ''
   } else {
-    list.innerHTML = projects.map(p => {
-      const s = {live:'badge-green',development:'badge-yellow',archived:'badge-blue'}[p.status]||'badge-blue';
-      const sl = {live:'✓ Live',development:'⏳ Dev',archived:'Arsip'}[p.status]||p.status;
+    list.innerHTML = projectsCache.map(p => {
+      const s = {live:'badge-green',development:'badge-yellow',archived:'badge-blue'}[p.status]||'badge-blue'
+      const sl = {live:'✓ Live',development:'⏳ Dev',archived:'Arsip'}[p.status]||p.status
       return `
         <div class="border border-gray-200 rounded-xl p-4 hover:bg-gray-50 transition">
           <div class="flex items-start justify-between mb-1">
@@ -690,10 +720,9 @@ function renderAnalyst() {
             <button onclick="deleteProject('${p.id}')" class="text-xs border border-red-200 text-red-500 px-3 py-1.5 rounded-lg hover:bg-red-50 transition font-bold">Hapus</button>
           </div>
         </div>
-      `;
-    }).join('');
- 
-    perfList.innerHTML = projects.map(p => `
+      `
+    }).join('')
+    perfList.innerHTML = projectsCache.map(p => `
       <div>
         <div class="flex justify-between mb-1.5">
           <p class="text-sm font-bold text-black">${p.name}</p>
@@ -701,71 +730,78 @@ function renderAnalyst() {
         </div>
         <div class="progress"><div class="progress-bar" style="width:${p.performanceScore}%"></div></div>
       </div>
-    `).join('');
+    `).join('')
   }
- 
-  const live = projects.filter(p=>p.status==='live');
-  const dev = projects.filter(p=>p.status==='development');
-  document.getElementById('stat-total').textContent = projects.length;
-  document.getElementById('stat-live').textContent = live.length;
-  document.getElementById('stat-dev').textContent = dev.length;
-  document.getElementById('stat-visits').textContent = projects.reduce((a,p)=>a+p.visitCount,0).toLocaleString();
-  const avgPerf = projects.length ? Math.round(projects.reduce((a,p)=>a+p.performanceScore,0)/projects.length) : 0;
-  const avgUptime = live.length ? (live.reduce((a,p)=>a+p.uptimePercent,0)/live.length).toFixed(0)+'%' : '—';
-  document.getElementById('stat-avgperf').textContent = projects.length ? avgPerf+'%' : '—';
-  document.getElementById('stat-uptime').textContent = avgUptime;
+
+  const live = projectsCache.filter(p=>p.status==='live')
+  const dev = projectsCache.filter(p=>p.status==='development')
+  document.getElementById('stat-total').textContent = projectsCache.length
+  document.getElementById('stat-live').textContent = live.length
+  document.getElementById('stat-dev').textContent = dev.length
+  document.getElementById('stat-visits').textContent = projectsCache.reduce((a,p)=>a+p.visitCount,0).toLocaleString()
+  const avgPerf = projectsCache.length ? Math.round(projectsCache.reduce((a,p)=>a+p.performanceScore,0)/projectsCache.length) : 0
+  const avgUptime = live.length ? (live.reduce((a,p)=>a+p.uptimePercent,0)/live.length).toFixed(0)+'%' : '—'
+  document.getElementById('stat-avgperf').textContent = projectsCache.length ? avgPerf+'%' : '—'
+  document.getElementById('stat-uptime').textContent = avgUptime
 }
- 
+
 function renderProfil() {
   if (!CURRENT_USER) { openAuthModal(); return }
-  const profile = DB.get('user_profile') || {};
-  const contents = DB.getArr('contents');
-  const discussions = DB.getArr('discussions');
- 
-  document.getElementById('profil-name').textContent = profile.name || 'San Pelong';
-  document.getElementById('profil-username').textContent = '@'+(profile.username||'sanpelong');
-  document.getElementById('profil-bio').textContent = profile.bio || '';
-  document.getElementById('info-location').textContent = profile.location || '';
-  document.getElementById('info-occupation').textContent = profile.occupation || '';
-  document.getElementById('info-techstack').textContent = profile.techStack || '';
-  document.getElementById('info-interests').textContent = profile.interests || '';
- 
+  const profile = {
+    name: CURRENT_PROFILE?.username || 'San Pelong',
+    username: CURRENT_PROFILE?.username || 'sanpelong',
+    bio: CURRENT_PROFILE?.bio || '',
+    location: CURRENT_PROFILE?.location || '',
+    occupation: CURRENT_PROFILE?.occupation || '',
+    techStack: CURRENT_PROFILE?.tech_stack || '',
+    interests: CURRENT_PROFILE?.interests || '',
+    avatarUrl: CURRENT_PROFILE?.avatar_url || '',
+    coverUrl: CURRENT_PROFILE?.cover_url || '',
+    followers: 0,
+    following: 0
+  }
+  const myContents = contentsCache.filter(c => c.userId === CURRENT_USER.id)
+  const myDiscussions = postsCache.filter(d => d.userId === CURRENT_USER.id)
+
+  document.getElementById('profil-name').textContent = profile.name
+  document.getElementById('profil-username').textContent = '@'+profile.username
+  document.getElementById('profil-bio').textContent = profile.bio
+  document.getElementById('info-location').textContent = profile.location
+  document.getElementById('info-occupation').textContent = profile.occupation
+  document.getElementById('info-techstack').textContent = profile.techStack
+  document.getElementById('info-interests').textContent = profile.interests
+
   if (profile.avatarUrl) {
-    document.getElementById('avatar-img').src = profile.avatarUrl;
-    document.getElementById('avatar-img').classList.remove('hidden');
-    document.getElementById('avatar-initial').classList.add('hidden');
+    document.getElementById('avatar-img').src = profile.avatarUrl
+    document.getElementById('avatar-img').classList.remove('hidden')
+    document.getElementById('avatar-initial').classList.add('hidden')
   } else {
-    document.getElementById('avatar-initial').textContent = (profile.name||'S')[0].toUpperCase();
-    document.getElementById('avatar-img').classList.add('hidden');
-    document.getElementById('avatar-initial').classList.remove('hidden');
+    document.getElementById('avatar-initial').textContent = (profile.name||'S')[0].toUpperCase()
+    document.getElementById('avatar-img').classList.add('hidden')
+    document.getElementById('avatar-initial').classList.remove('hidden')
   }
   if (profile.coverUrl) {
-    const coverImg = document.getElementById('cover-img');
-    coverImg.src = profile.coverUrl;
-    coverImg.classList.remove('hidden');
+    document.getElementById('cover-img').src = profile.coverUrl
+    document.getElementById('cover-img').classList.remove('hidden')
   }
- 
-  document.getElementById('stat-followers').textContent = profile.followers || 0;
-  document.getElementById('stat-following').textContent = profile.following || 0;
-  document.getElementById('stat-posts').textContent = contents.length;
-  document.getElementById('stat-likes-total').textContent = contents.reduce((a,c)=>a+c.likes,0);
-  document.getElementById('stat-comments').textContent = discussions.reduce((a,d)=>a+d.comments,0);
-  document.getElementById('stat-shares').textContent = discussions.reduce((a,d)=>a+d.shares,0);
- 
-  renderRecentUploads();
-  renderProfilKonten();
-  renderProfilDiskusi();
+
+  document.getElementById('stat-followers').textContent = profile.followers
+  document.getElementById('stat-following').textContent = profile.following
+  document.getElementById('stat-posts').textContent = myContents.length
+  document.getElementById('stat-likes-total').textContent = myContents.reduce((a,c)=>a+c.likes,0)
+  document.getElementById('stat-comments').textContent = myDiscussions.reduce((a,d)=>a+d.comments,0)
+  document.getElementById('stat-shares').textContent = myDiscussions.reduce((a,d)=>a+d.shares,0)
+
+  renderRecentUploads()
+  renderProfilKonten()
+  renderProfilDiskusi()
 }
 
-// Render grid konten milik user di halaman profil
 function renderProfilKonten() {
-  const grid = document.getElementById('profil-konten-grid');
-  if (!grid) return;
-  const myContents = DB.getArr('contents').filter(c => c.userId === CURRENT_USER?.id || !c.userId);
-  // Fallback: tampilkan semua kalau userId belum ter-set (data lama)
-  const displayContents = myContents.length > 0 ? myContents : DB.getArr('contents');
-
-  if (!displayContents.length) {
+  const grid = document.getElementById('profil-konten-grid')
+  if (!grid) return
+  const myContents = contentsCache.filter(c => c.userId === CURRENT_USER?.id)
+  if (!myContents.length) {
     grid.innerHTML = `
       <div class="col-span-4 text-center py-16 text-gray-400">
         <i class="fas fa-cloud-upload-alt text-5xl mb-4 block text-gray-200"></i>
@@ -774,44 +810,35 @@ function renderProfilKonten() {
         <button onclick="openUploadModal()" class="mt-4 bg-black text-white px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-zinc-800 transition">
           <i class="fas fa-upload mr-2"></i>Upload Sekarang
         </button>
-      </div>`;
-    return;
+      </div>`
+    return
   }
-
-  const fileIconsMap = {image:'fas fa-image',video:'fas fa-video',pdf:'fas fa-file-pdf',doc:'fas fa-file-word',docx:'fas fa-file-word'};
-  grid.innerHTML = displayContents.map(c => {
-    const icon = fileIconsMap[c.fileType] || 'fas fa-file';
+  const fileIconsMap = {image:'fas fa-image',video:'fas fa-video',pdf:'fas fa-file-pdf',doc:'fas fa-file-word',docx:'fas fa-file-word'}
+  grid.innerHTML = myContents.map(c => {
+    const icon = fileIconsMap[c.fileType] || 'fas fa-file'
     return `
       <div class="group relative rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-lg transition bg-white">
-        <!-- Thumbnail -->
         <div class="aspect-[4/3] bg-zinc-100 relative overflow-hidden cursor-pointer" onclick="showContentDetail('${c.id}')">
-          ${c.thumbUrl
-            ? `<img src="${c.thumbUrl}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">`
-            : `<div class="w-full h-full flex items-center justify-center"><i class="${icon} text-4xl text-gray-300"></i></div>`}
+          ${c.thumbUrl ? `<img src="${c.thumbUrl}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">` : `<div class="w-full h-full flex items-center justify-center"><i class="${icon} text-4xl text-gray-300"></i></div>`}
           <div class="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition flex items-center justify-center">
             <i class="fas fa-eye text-white opacity-0 group-hover:opacity-100 transition text-2xl"></i>
           </div>
-          <!-- 3-dot menu -->
           <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition" onclick="event.stopPropagation()">
             <div class="relative" id="content-menu-wrap-${c.id}">
-              <button onclick="toggleContentMenu('${c.id}')"
-                class="w-8 h-8 rounded-full bg-black/60 hover:bg-black flex items-center justify-center text-white text-xs">
+              <button onclick="toggleContentMenu('${c.id}')" class="w-8 h-8 rounded-full bg-black/60 hover:bg-black flex items-center justify-center text-white text-xs">
                 <i class="fas fa-ellipsis-v"></i>
               </button>
               <div id="content-menu-${c.id}" class="hidden absolute right-0 top-9 z-50 bg-white border border-gray-100 rounded-2xl shadow-xl py-2 min-w-[150px]">
-                <button onclick="openEditKonten('${c.id}');toggleContentMenu('${c.id}')"
-                  class="w-full flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-gray-50 text-black font-medium">
+                <button onclick="openEditKonten('${c.id}');toggleContentMenu('${c.id}')" class="w-full flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-gray-50 text-black font-medium">
                   <i class="fas fa-pen w-4 text-center text-blue-500"></i> Edit Konten
                 </button>
-                <button onclick="deleteKonten('${c.id}')"
-                  class="w-full flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-red-50 text-red-500 font-medium">
+                <button onclick="deleteKonten('${c.id}')" class="w-full flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-red-50 text-red-500 font-medium">
                   <i class="fas fa-trash w-4 text-center"></i> Hapus
                 </button>
               </div>
             </div>
           </div>
         </div>
-        <!-- Info -->
         <div class="p-3">
           <h3 class="font-bold text-black text-sm truncate mb-1" title="${c.title}">${c.title}</h3>
           <p class="text-xs text-gray-400 truncate mb-2">${c.description || 'Tidak ada deskripsi'}</p>
@@ -821,26 +848,24 @@ function renderProfilKonten() {
             <span class="uppercase bg-gray-100 px-2 py-0.5 rounded-full font-medium">${c.fileType||'file'}</span>
           </div>
         </div>
-      </div>`;
-  }).join('');
+      </div>`
+  }).join('')
 }
 
-// Render diskusi milik user di halaman profil
 function renderProfilDiskusi() {
-  const actEl = document.getElementById('profil-activity');
-  if (!actEl) return;
-  const profile = DB.get('user_profile') || {};
-  const allDisc = DB.getArr('discussions').filter(d => d.userId === CURRENT_USER?.id);
-  if (!allDisc.length) {
-    actEl.innerHTML = `<p class="text-gray-400 text-sm py-6 text-center">Belum ada diskusi.</p>`;
-    return;
+  const actEl = document.getElementById('profil-activity')
+  if (!actEl) return
+  const myDiscussions = postsCache.filter(d => d.userId === CURRENT_USER?.id)
+  if (!myDiscussions.length) {
+    actEl.innerHTML = `<p class="text-gray-400 text-sm py-6 text-center">Belum ada diskusi.</p>`
+    return
   }
-  actEl.innerHTML = allDisc.map(d => `
+  actEl.innerHTML = myDiscussions.map(d => `
     <div class="post-item" id="post-${d.id}">
       <div class="flex gap-4 mb-3">
-        ${avatarEl(profile.name || 'S', profile.avatarUrl)}
+        ${avatarEl(d.userName, d.userAvatar)}
         <div class="flex-1">
-          <p class="font-bold text-black">${profile.name||'San Pelong'}</p>
+          <p class="font-bold text-black">${d.userName}</p>
           <p class="text-xs text-gray-400">${timeAgo(d.createdAt)}</p>
         </div>
         <div class="relative" id="menu-wrap-${d.id}">
@@ -864,41 +889,40 @@ function renderProfilDiskusi() {
         <span><i class="fas fa-share mr-1"></i>${d.shares}</span>
       </div>
     </div>
-  `).join('');
+  `).join('')
 }
 
-// Tab switcher profil
 function switchProfilTab(tab) {
-  const kontenPanel = document.getElementById('profil-panel-konten');
-  const diskusiPanel = document.getElementById('profil-panel-diskusi');
-  const kontenBtn = document.getElementById('profil-tab-konten');
-  const diskusiBtn = document.getElementById('profil-tab-diskusi');
+  const kontenPanel = document.getElementById('profil-panel-konten')
+  const diskusiPanel = document.getElementById('profil-panel-diskusi')
+  const kontenBtn = document.getElementById('profil-tab-konten')
+  const diskusiBtn = document.getElementById('profil-tab-diskusi')
   if (tab === 'konten') {
-    kontenPanel.classList.remove('hidden');
-    diskusiPanel.classList.add('hidden');
-    kontenBtn.classList.add('text-black', 'border-black');
-    kontenBtn.classList.remove('text-gray-400', 'border-transparent');
-    diskusiBtn.classList.remove('text-black', 'border-black');
-    diskusiBtn.classList.add('text-gray-400', 'border-transparent');
+    kontenPanel.classList.remove('hidden')
+    diskusiPanel.classList.add('hidden')
+    kontenBtn.classList.add('text-black', 'border-black')
+    kontenBtn.classList.remove('text-gray-400', 'border-transparent')
+    diskusiBtn.classList.remove('text-black', 'border-black')
+    diskusiBtn.classList.add('text-gray-400', 'border-transparent')
   } else {
-    diskusiPanel.classList.remove('hidden');
-    kontenPanel.classList.add('hidden');
-    diskusiBtn.classList.add('text-black', 'border-black');
-    diskusiBtn.classList.remove('text-gray-400', 'border-transparent');
-    kontenBtn.classList.remove('text-black', 'border-black');
-    kontenBtn.classList.add('text-gray-400', 'border-transparent');
+    diskusiPanel.classList.remove('hidden')
+    kontenPanel.classList.add('hidden')
+    diskusiBtn.classList.add('text-black', 'border-black')
+    diskusiBtn.classList.remove('text-gray-400', 'border-transparent')
+    kontenBtn.classList.remove('text-black', 'border-black')
+    kontenBtn.classList.add('text-gray-400', 'border-transparent')
   }
 }
- 
+
 function renderRecentUploads() {
-  const contents = DB.getArr('contents').slice(0,3);
-  const links = DB.getArr('linkwebs').slice(0,2);
-  const el = document.getElementById('recent-uploads');
-  const fileIconsMap = {image:'fas fa-file-image text-orange-400',video:'fas fa-file-video text-purple-400',pdf:'fas fa-file-pdf text-red-400',doc:'fas fa-file-word text-blue-400'};
+  const recentContents = contentsCache.slice(0,3)
+  const recentLinks = linkwebsCache.slice(0,2)
+  const el = document.getElementById('recent-uploads')
+  const fileIconsMap = {image:'fas fa-file-image text-orange-400',video:'fas fa-file-video text-purple-400',pdf:'fas fa-file-pdf text-red-400',doc:'fas fa-file-word text-blue-400'}
   const all = [
-    ...contents.map(c=>({icon:fileIconsMap[c.fileType]||'fas fa-file text-gray-400',name:c.title,size:c.fileType?.toUpperCase()||'FILE',type:'content'})),
-    ...links.map(l=>({icon:'fas fa-link text-green-500',name:l.title,size:'LINK',type:'link'})),
-  ].slice(0,4);
+    ...recentContents.map(c=>({icon:fileIconsMap[c.fileType]||'fas fa-file text-gray-400',name:c.title,size:c.fileType?.toUpperCase()||'FILE',type:'content'})),
+    ...recentLinks.map(l=>({icon:'fas fa-link text-green-500',name:l.title,size:'LINK',type:'link'})),
+  ].slice(0,4)
   if (!all.length) { el.innerHTML = `<p class="text-xs text-gray-400">Belum ada upload</p>`; return; }
   el.innerHTML = all.map(f=>`
     <div class="flex items-center gap-2 p-2 hover:bg-gray-50 rounded-lg">
@@ -906,22 +930,17 @@ function renderRecentUploads() {
       <p class="text-xs text-gray-700 flex-1 truncate">${f.name}</p>
       <span class="text-xs text-gray-400 flex-shrink-0">${f.size}</span>
     </div>
-  `).join('');
+  `).join('')
 }
- 
+
 function renderPengaturan() {
-  const dbStats = document.getElementById('db-stats');
-  const contents = DB.getArr('contents');
-  const links = DB.getArr('linkwebs');
-  const projects = DB.getArr('projects');
-  const discussions = DB.getArr('discussions');
-  const cats = DB.getArr('categories');
+  const dbStats = document.getElementById('db-stats')
   dbStats.innerHTML = [
-    ['Konten Upload', contents.length, 'fas fa-file-alt text-blue-500'],
-    ['Link Web', links.length, 'fas fa-link text-green-500'],
-    ['Projects', projects.length, 'fas fa-rocket text-purple-500'],
-    ['Diskusi', discussions.length, 'fas fa-comments text-yellow-500'],
-    ['Kategori', cats.length, 'fas fa-th-large text-gray-500'],
+    ['Konten Upload', contentsCache.length, 'fas fa-file-alt text-blue-500'],
+    ['Link Web', linkwebsCache.length, 'fas fa-link text-green-500'],
+    ['Projects', projectsCache.length, 'fas fa-rocket text-purple-500'],
+    ['Diskusi', postsCache.length, 'fas fa-comments text-yellow-500'],
+    ['Kategori', categoriesCache.length, 'fas fa-th-large text-gray-500'],
   ].map(([label,count,icon])=>`
     <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
       <div class="flex items-center gap-3">
@@ -930,65 +949,58 @@ function renderPengaturan() {
       </div>
       <span class="font-bold text-black">${count}</span>
     </div>
-  `).join('');
-}
- 
-// ============================
-// ACTIONS
-// ============================
-async function toggleBookmark(contentId) {
-  if (!CURRENT_USER) { openAuthModal(); toast('⚠️ Login dulu untuk menyimpan konten'); return }
-  const saved = await window._SB.toggleSave(CURRENT_USER.id, contentId, 'content')
-  const contents = DB.getArr('contents')
-  const idx = contents.findIndex(c => c.id === contentId)
-  if (idx >= 0) {
-    contents[idx].bookmarked = saved
-    DB.set('contents', contents)
-  }
-  toast(saved ? '🔖 Disimpan ke koleksi' : 'Dihapus dari koleksi')
-  renderPage(getCurrentPage())
-}
- 
-function likePost(postId) {
-  const posts = DB.getArr('discussions');
-  const idx = posts.findIndex(p=>p.id===postId);
-  if (idx>=0) { posts[idx].likes++; DB.set('discussions', posts); renderDiskusi(); }
+  `).join('')
 }
 
 // ============================
-// POST EDIT / DELETE
+// ACTIONS (direct to Supabase, then reload)
 // ============================
+
+async function toggleBookmark(contentId) {
+  if (!CURRENT_USER) { openAuthModal(); toast('⚠️ Login dulu untuk menyimpan konten'); return }
+  const saved = await window._SB.toggleSave(CURRENT_USER.id, contentId, 'content')
+  await loadSaves()   // refresh savesCache and update bookmarked flags
+  renderPage(getCurrentPage())
+  toast(saved ? '🔖 Disimpan ke koleksi' : 'Dihapus dari koleksi')
+}
+
+async function likePost(postId) {
+  try {
+    await window._SB.likePost(postId, CURRENT_USER.id)
+    await loadPosts()
+    renderDiskusi()
+  } catch(e) { console.warn(e) }
+}
+
+// POST EDIT / DELETE
+
 function togglePostMenu(postId) {
-  const menu = document.getElementById('post-menu-' + postId);
-  if (!menu) return;
-  const isHidden = menu.classList.contains('hidden');
-  // Tutup semua menu dulu
-  document.querySelectorAll('[id^="post-menu-"]').forEach(m => m.classList.add('hidden'));
+  const menu = document.getElementById('post-menu-' + postId)
+  if (!menu) return
+  const isHidden = menu.classList.contains('hidden')
+  document.querySelectorAll('[id^="post-menu-"]').forEach(m => m.classList.add('hidden'))
   if (isHidden) {
-    menu.classList.remove('hidden');
-    // Satu kali klik di luar = tutup
+    menu.classList.remove('hidden')
     setTimeout(() => {
       document.addEventListener('click', function handler(e) {
         if (!menu.contains(e.target) && e.target.id !== 'btn-menu-' + postId) {
-          menu.classList.add('hidden');
-          document.removeEventListener('click', handler);
+          menu.classList.add('hidden')
+          document.removeEventListener('click', handler)
         }
-      });
-    }, 50);
+      })
+    }, 50)
   }
 }
 
 function closeAllPostMenus() {
-  document.querySelectorAll('[id^="post-menu-"]').forEach(m => m.classList.add('hidden'));
+  document.querySelectorAll('[id^="post-menu-"]').forEach(m => m.classList.add('hidden'))
 }
 
-function openEditPost(postId) {
-  const posts = DB.getArr('discussions');
-  const post = posts.find(p => p.id === postId);
-  if (!post) return;
+async function openEditPost(postId) {
+  const post = postsCache.find(p => p.id === postId)
+  if (!post) return
 
-  // Buat modal edit inline kalau belum ada
-  let modal = document.getElementById('modal-edit-post');
+  let modal = document.getElementById('modal-edit-post')
   if (!modal) {
     document.body.insertAdjacentHTML('beforeend', `
       <div id="modal-edit-post" class="modal-backdrop" onclick="closeModalBackdrop(event,'modal-edit-post')">
@@ -1006,201 +1018,153 @@ function openEditPost(postId) {
           </div>
         </div>
       </div>
-    `);
-    modal = document.getElementById('modal-edit-post');
+    `)
+    modal = document.getElementById('modal-edit-post')
   }
 
-  document.getElementById('edit-post-id').value = postId;
-  document.getElementById('edit-post-content').value = post.content;
-
-  // Update avatar di modal
-  const avatarEl2 = document.getElementById('edit-post-avatar');
+  document.getElementById('edit-post-id').value = postId
+  document.getElementById('edit-post-content').value = post.content
+  const avatarEl2 = document.getElementById('edit-post-avatar')
   if (avatarEl2 && CURRENT_PROFILE) {
     avatarEl2.outerHTML = avatarEl(CURRENT_PROFILE.username, CURRENT_PROFILE.avatar_url)
-      .replace('class="', 'id="edit-post-avatar" class="');
+      .replace('class="', 'id="edit-post-avatar" class="')
   }
-
-  openModal('modal-edit-post');
+  openModal('modal-edit-post')
 }
 
 async function saveEditPost() {
-  const postId = document.getElementById('edit-post-id').value;
-  const newContent = document.getElementById('edit-post-content').value.trim();
-  if (!newContent) { toast('⚠️ Konten tidak boleh kosong'); return; }
-
-  // Update Supabase
-  try {
-    await window._SB.updatePost(postId, { content: newContent });
-  } catch(e) { /* fallback ke localStorage saja */ }
-
-  // Update localStorage
-  const posts = DB.getArr('discussions');
-  const idx = posts.findIndex(p => p.id === postId);
-  if (idx >= 0) { posts[idx].content = newContent; DB.set('discussions', posts); }
-
-  toast('✅ Post berhasil diperbarui!');
-  closeModal('modal-edit-post');
-
-  // Re-render halaman aktif
-  const page = getCurrentPage();
-  if (page === 'diskusi') renderDiskusi();
-  else if (page === 'profil') renderProfil();
+  const postId = document.getElementById('edit-post-id').value
+  const newContent = document.getElementById('edit-post-content').value.trim()
+  if (!newContent) { toast('⚠️ Konten tidak boleh kosong'); return }
+  await window._SB.updatePost(postId, { content: newContent })
+  await loadPosts()
+  closeModal('modal-edit-post')
+  renderPage(getCurrentPage())
+  toast('✅ Post berhasil diperbarui!')
 }
 
 async function deletePost(postId) {
-  if (!confirm('Yakin hapus postingan ini?')) return;
-
-  try {
-    await window._SB.deletePost(postId);
-  } catch(e) { /* fallback */ }
-
-  const posts = DB.getArr('discussions').filter(p => p.id !== postId);
-  DB.set('discussions', posts);
-
-  toast('🗑️ Postingan dihapus');
-
-  const page = getCurrentPage();
-  if (page === 'diskusi') renderDiskusi();
-  else if (page === 'profil') renderProfil();
+  if (!confirm('Yakin hapus postingan ini?')) return
+  await window._SB.deletePost(postId)
+  await loadPosts()
+  renderPage(getCurrentPage())
+  toast('🗑️ Postingan dihapus')
 }
 
-// ============================
-// KONTEN EDIT / DELETE (di halaman Profil)
-// ============================
+// KONTEN EDIT / DELETE
+
 function toggleContentMenu(contentId) {
-  const menu = document.getElementById('content-menu-' + contentId);
-  if (!menu) return;
-  const isHidden = menu.classList.contains('hidden');
-  document.querySelectorAll('[id^="content-menu-"]').forEach(m => m.classList.add('hidden'));
+  const menu = document.getElementById('content-menu-' + contentId)
+  if (!menu) return
+  const isHidden = menu.classList.contains('hidden')
+  document.querySelectorAll('[id^="content-menu-"]').forEach(m => m.classList.add('hidden'))
   if (isHidden) {
-    menu.classList.remove('hidden');
+    menu.classList.remove('hidden')
     setTimeout(() => {
       document.addEventListener('click', function handler(e) {
         if (!menu.contains(e.target)) {
-          menu.classList.add('hidden');
-          document.removeEventListener('click', handler);
+          menu.classList.add('hidden')
+          document.removeEventListener('click', handler)
         }
-      });
-    }, 50);
+      })
+    }, 50)
   }
 }
 
-function openEditKonten(contentId) {
-  const contents = DB.getArr('contents');
-  const c = contents.find(c => c.id === contentId);
-  if (!c) return;
-
-  populateCategorySelects();
-  document.getElementById('edit-konten-id').value = contentId;
-  document.getElementById('edit-konten-title').value = c.title || '';
-  document.getElementById('edit-konten-desc').value = c.description || '';
-  document.getElementById('edit-konten-url').value = c.webUrl || '';
-
-  // Set kategori
-  const catSel = document.getElementById('edit-konten-category');
-  if (catSel && c.categoryId) catSel.value = c.categoryId;
-
-  openModal('modal-edit-konten');
+async function openEditKonten(contentId) {
+  const c = contentsCache.find(c => c.id === contentId)
+  if (!c) return
+  populateCategorySelects()
+  document.getElementById('edit-konten-id').value = contentId
+  document.getElementById('edit-konten-title').value = c.title || ''
+  document.getElementById('edit-konten-desc').value = c.description || ''
+  document.getElementById('edit-konten-url').value = c.webUrl || ''
+  const catSel = document.getElementById('edit-konten-category')
+  if (catSel && c.categoryId) catSel.value = c.categoryId
+  openModal('modal-edit-konten')
 }
 
 async function saveEditKonten() {
-  const contentId = document.getElementById('edit-konten-id').value;
-  const title = document.getElementById('edit-konten-title').value.trim();
-  if (!title) { toast('⚠️ Judul tidak boleh kosong'); return; }
-
+  const contentId = document.getElementById('edit-konten-id').value
+  const title = document.getElementById('edit-konten-title').value.trim()
+  if (!title) { toast('⚠️ Judul tidak boleh kosong'); return }
   const updates = {
     name: title,
     description: document.getElementById('edit-konten-desc').value.trim(),
     category_id: document.getElementById('edit-konten-category').value || null,
-    display_url: document.getElementById('edit-konten-url').value.trim() || null,
-  };
-
-  try {
-    await window._SB.updateContent(contentId, updates);
-  } catch(e) { /* fallback ke localStorage */ }
-
-  const contents = DB.getArr('contents');
-  const idx = contents.findIndex(c => c.id === contentId);
-  if (idx >= 0) {
-    contents[idx].title = title;
-    contents[idx].description = updates.description;
-    contents[idx].categoryId = updates.category_id;
-    contents[idx].webUrl = updates.display_url;
-    DB.set('contents', contents);
+    display_url: document.getElementById('edit-konten-url').value.trim() || null
   }
-
-  toast('✅ Konten berhasil diperbarui!');
-  closeModal('modal-edit-konten');
-  renderProfil();
+  await window._SB.updateContent(contentId, updates)
+  await loadContents()
+  await loadSaves()
+  closeModal('modal-edit-konten')
+  renderProfil()
+  toast('✅ Konten berhasil diperbarui!')
 }
 
 async function deleteKonten(contentId) {
-  if (!confirm('Yakin hapus konten ini? Tindakan ini tidak bisa dibatalkan.')) return;
-
-  try {
-    await window._SB.deleteContent(contentId);
-  } catch(e) { /* fallback */ }
-
-  const contents = DB.getArr('contents').filter(c => c.id !== contentId);
-  DB.set('contents', contents);
-
-  toast('🗑️ Konten dihapus');
-  renderProfil();
-  // Update stat di halaman lain juga
-  renderBeranda();
+  if (!confirm('Yakin hapus konten ini? Tindakan ini tidak bisa dibatalkan.')) return
+  await window._SB.deleteContent(contentId)
+  await loadContents()
+  await loadSaves()
+  renderProfil()
+  renderBeranda()
+  toast('🗑️ Konten dihapus')
 }
- 
-function showContentDetail(id) {
-  const contents = DB.getArr('contents');
-  const c = contents.find(c => c.id === id);
-  if (!c) return;
-  
+
+// SHOW CONTENT DETAIL
+
+async function showContentDetail(id) {
+  const c = contentsCache.find(c => c.id === id)
+  if (!c) return
+
+  // increment views
+  await window._SB.incrementViews(id)
+  await loadContents()
+
+  const updated = contentsCache.find(c => c.id === id)
+  if (!updated) return
+
   const fileIconMap = {
     image: 'fas fa-file-image text-white',
     video: 'fas fa-file-video text-white',
     pdf: 'fas fa-file-pdf text-white',
     doc: 'fas fa-file-word text-white',
     docx: 'fas fa-file-word text-white'
-  };
-  const fileIcon = fileIconMap[c.fileType] || 'fas fa-file text-white';
- 
-  const idx = contents.findIndex(cc => cc.id === id);
-  if (idx >= 0) { contents[idx].views++; DB.set('contents', contents); }
- 
-  if (!c.comments) { contents[idx].comments = []; DB.set('contents', contents); }
-  if (!c.ratings)  { contents[idx].ratings = []; DB.set('contents', contents); }
- 
-  const comments = DB.getArr('contents').find(cc => cc.id === id).comments || [];
-  const ratings = DB.getArr('contents').find(cc => cc.id === id).ratings || [];
-  const avgRating = ratings.length ? (ratings.reduce((a,b) => a + b.score, 0) / ratings.length).toFixed(1) : null;
-  
-  const fileMetaExtra = c.fileName
-    ? `<div class="bg-gray-50 rounded-xl p-3"><p class="text-xs text-gray-400 mb-0.5">Nama File</p><p class="text-sm font-semibold text-black truncate">${c.fileName}</p></div>
-       <div class="bg-gray-50 rounded-xl p-3"><p class="text-xs text-gray-400 mb-0.5">Ukuran</p><p class="text-sm font-semibold text-black">${c.fileSize ? formatSize(c.fileSize) : '-'}</p></div>`
-    : '';
- 
-  const webUrlBlock = c.webUrl
-    ? `<a href="${c.webUrl}" target="_blank" rel="noopener" class="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 mb-4 text-sm text-blue-700 hover:bg-blue-100 transition"><i class="fas fa-external-link-alt"></i><span class="truncate flex-1">${c.webUrl}</span><span class="text-xs font-semibold flex-shrink-0">Buka →</span></a>`
-    : '';
- 
-  const pdfOpenBtn = c.fileType === 'pdf'
-    ? `<button onclick="togglePdfViewer('${c.id}')" class="flex-1 flex items-center justify-center gap-2 bg-black text-white text-sm py-3 rounded-xl font-semibold hover:bg-gray-800 transition"><i class="fas fa-file-pdf"></i> Buka PDF</button>`
-    : '';
- 
-  const pdfViewerBlock = c.fileType === 'pdf' && c.fileData
-    ? `<div id="pdf-viewer-${c.id}" class="hidden mb-6"><div class="flex items-center justify-between mb-2"><span class="text-sm font-semibold text-black">Preview PDF</span><button onclick="togglePdfViewer('${c.id}')" class="text-xs text-gray-400 hover:text-black"><i class="fas fa-times"></i> Tutup</button></div><iframe src="${c.fileData}" class="w-full rounded-2xl border border-gray-200" style="height:70vh;" title="${c.title}"></iframe></div>`
-    : '';
- 
-  const fileActionsBlock = c.fileData
-    ? `<div class="flex gap-3 mb-4">${pdfOpenBtn}<button onclick="downloadContent('${c.id}')" class="flex-1 flex items-center justify-center gap-2 bg-gray-100 text-black text-sm py-3 rounded-xl font-semibold hover:bg-gray-200 transition"><i class="fas fa-download"></i> Download</button></div>${pdfViewerBlock}`
-    : `<div class="flex items-center gap-2 bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-3 mb-4 text-sm text-yellow-700"><i class="fas fa-info-circle"></i><span>Konten ini tidak memiliki file yang diunggah.</span></div>`;
- 
-  const stars = (score, interactive = false, name = '') => [1, 2, 3, 4, 5].map(i =>
+  }
+  const fileIcon = fileIconMap[updated.fileType] || 'fas fa-file text-white'
+
+  const comments = updated.comments || []
+  const ratings = updated.ratings || []
+  const avgRating = ratings.length ? (ratings.reduce((a,b) => a + b.score, 0) / ratings.length).toFixed(1) : null
+
+  const fileMetaExtra = updated.fileName
+    ? `<div class="bg-gray-50 rounded-xl p-3"><p class="text-xs text-gray-400 mb-0.5">Nama File</p><p class="text-sm font-semibold text-black truncate">${updated.fileName}</p></div>
+       <div class="bg-gray-50 rounded-xl p-3"><p class="text-xs text-gray-400 mb-0.5">Ukuran</p><p class="text-sm font-semibold text-black">${updated.fileSize ? formatSize(updated.fileSize) : '-'}</p></div>`
+    : ''
+
+  const webUrlBlock = updated.webUrl
+    ? `<a href="${updated.webUrl}" target="_blank" rel="noopener" class="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 mb-4 text-sm text-blue-700 hover:bg-blue-100 transition"><i class="fas fa-external-link-alt"></i><span class="truncate flex-1">${updated.webUrl}</span><span class="text-xs font-semibold flex-shrink-0">Buka →</span></a>`
+    : ''
+
+  const pdfOpenBtn = updated.fileType === 'pdf'
+    ? `<button onclick="togglePdfViewer('${updated.id}')" class="flex-1 flex items-center justify-center gap-2 bg-black text-white text-sm py-3 rounded-xl font-semibold hover:bg-gray-800 transition"><i class="fas fa-file-pdf"></i> Buka PDF</button>`
+    : ''
+
+  const pdfViewerBlock = updated.fileType === 'pdf' && updated.fileData
+    ? `<div id="pdf-viewer-${updated.id}" class="hidden mb-6"><div class="flex items-center justify-between mb-2"><span class="text-sm font-semibold text-black">Preview PDF</span><button onclick="togglePdfViewer('${updated.id}')" class="text-xs text-gray-400 hover:text-black"><i class="fas fa-times"></i> Tutup</button></div><iframe src="${updated.fileData}" class="w-full rounded-2xl border border-gray-200" style="height:70vh;" title="${updated.title}"></iframe></div>`
+    : ''
+
+  const fileActionsBlock = updated.fileData
+    ? `<div class="flex gap-3 mb-4">${pdfOpenBtn}<button onclick="downloadContent('${updated.id}')" class="flex-1 flex items-center justify-center gap-2 bg-gray-100 text-black text-sm py-3 rounded-xl font-semibold hover:bg-gray-200 transition"><i class="fas fa-download"></i> Download</button></div>${pdfViewerBlock}`
+    : `<div class="flex items-center gap-2 bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-3 mb-4 text-sm text-yellow-700"><i class="fas fa-info-circle"></i><span>Konten ini tidak memiliki file yang diunggah.</span></div>`
+
+  const stars = (score, interactive = false, name = '') => [1,2,3,4,5].map(i =>
     interactive
       ? `<i class="${i <= score ? 'fas' : 'far'} fa-star text-yellow-400 cursor-pointer text-lg" onmouseover="hoverStar(this,${i})" onmouseout="resetStars('${name}')" onclick="setStar('${name}',${i})"></i>`
       : `<i class="${i <= Math.round(score) ? 'fas' : 'far'} fa-star text-yellow-400 text-sm"></i>`
-  ).join('');
- 
+  ).join('')
+
   const commentsHtml = comments.length
     ? comments.map(cm => `
         <div class="flex gap-3 py-4 border-b border-gray-100 last:border-0">
@@ -1214,273 +1178,219 @@ function showContentDetail(id) {
             <p class="text-sm text-gray-600 leading-relaxed">${cm.text}</p>
           </div>
         </div>`).join('')
-    : `<div class="text-center py-10 text-gray-400"><i class="far fa-comment-dots text-3xl mb-2 block"></i><p class="text-sm">Belum ada komentar. Jadilah yang pertama!</p></div>`;
- 
+    : `<div class="text-center py-10 text-gray-400"><i class="far fa-comment-dots text-3xl mb-2 block"></i><p class="text-sm">Belum ada komentar. Jadilah yang pertama!</p></div>`
+
   const html = `
     <div id="content-detail-modal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4" onclick="if(event.target===this)closeContentDetail()">
       <div class="bg-white w-full sm:max-w-xl rounded-t-3xl sm:rounded-3xl max-h-[95vh] flex flex-col overflow-hidden shadow-2xl">
         <div class="flex items-center justify-between px-5 pt-4 pb-2 flex-shrink-0">
-          <button onclick="closeContentDetail()" class="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition">
-            <i class="fas fa-arrow-left text-sm text-gray-700"></i>
-          </button>
-          <span class="text-xs font-medium text-gray-400 uppercase tracking-widest">${c.fileType || 'Konten'}</span>
-          <button onclick="toggleBookmark('${c.id}');closeContentDetail();showContentDetail('${c.id}')" class="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition">
-            <i class="${c.bookmarked ? 'fas text-black' : 'far text-gray-400'} fa-bookmark text-sm"></i>
+          <button onclick="closeContentDetail()" class="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition"><i class="fas fa-arrow-left text-sm text-gray-700"></i></button>
+          <span class="text-xs font-medium text-gray-400 uppercase tracking-widest">${updated.fileType || 'Konten'}</span>
+          <button onclick="toggleBookmark('${updated.id}');closeContentDetail();showContentDetail('${updated.id}')" class="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition">
+            <i class="${updated.bookmarked ? 'fas text-black' : 'far text-gray-400'} fa-bookmark text-sm"></i>
           </button>
         </div>
         <div class="overflow-y-auto flex-1 px-5 pb-8">
           <div class="w-full aspect-[3/2] rounded-2xl overflow-hidden bg-zinc-900 flex items-center justify-center mb-5 relative">
-            ${c.thumbUrl
-              ? `<img src="${c.thumbUrl}" class="w-full h-full object-cover">`
-              : `<i class="${fileIcon} text-6xl text-white opacity-30"></i>`}
+            ${updated.thumbUrl ? `<img src="${updated.thumbUrl}" class="w-full h-full object-cover">` : `<i class="${fileIcon} text-6xl text-white opacity-30"></i>`}
             <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-            <div class="absolute bottom-4 left-4 right-4">
-              <h2 class="text-white text-xl font-bold leading-tight drop-shadow">${c.title}</h2>
-            </div>
+            <div class="absolute bottom-4 left-4 right-4"><h2 class="text-white text-xl font-bold leading-tight drop-shadow">${updated.title}</h2></div>
           </div>
           <div class="flex items-center gap-3 mb-4">
-            ${avgRating
-              ? `<div class="flex items-center gap-1.5">
-                  <span class="text-2xl font-bold text-black">${avgRating}</span>
-                  <div class="flex flex-col gap-0.5">
-                    <div class="flex">${stars(avgRating)}</div>
-                    <span class="text-xs text-gray-400">${ratings.length} ulasan</span>
-                  </div>
-                </div>`
-              : `<span class="text-sm text-gray-400 italic">Belum ada penilaian</span>`}
-            <div class="ml-auto flex items-center gap-3 text-sm text-gray-500">
-              <span><i class="fas fa-eye mr-1 text-gray-400"></i>${c.views}</span>
-              <span><i class="fas fa-heart mr-1 text-red-400"></i>${c.likes}</span>
-            </div>
+            ${avgRating ? `<div class="flex items-center gap-1.5"><span class="text-2xl font-bold text-black">${avgRating}</span><div class="flex flex-col gap-0.5"><div class="flex">${stars(avgRating)}</div><span class="text-xs text-gray-400">${ratings.length} ulasan</span></div></div>` : `<span class="text-sm text-gray-400 italic">Belum ada penilaian</span>`}
+            <div class="ml-auto flex items-center gap-3 text-sm text-gray-500"><span><i class="fas fa-eye mr-1 text-gray-400"></i>${updated.views}</span><span><i class="fas fa-heart mr-1 text-red-400"></i>${updated.likes}</span></div>
           </div>
-          <div class="mb-6">
-            <h3 class="text-sm font-semibold text-black mb-2">Tentang Konten</h3>
-            <p class="text-sm text-gray-600 leading-relaxed">${c.description || 'Tidak ada deskripsi tersedia.'}</p>
-          </div>
+          <div class="mb-6"><h3 class="text-sm font-semibold text-black mb-2">Tentang Konten</h3><p class="text-sm text-gray-600 leading-relaxed">${updated.description || 'Tidak ada deskripsi tersedia.'}</p></div>
           <div class="grid grid-cols-2 gap-3 mb-4">
-            <div class="bg-gray-50 rounded-xl p-3">
-              <p class="text-xs text-gray-400 mb-0.5">Tipe File</p>
-              <p class="text-sm font-semibold text-black uppercase">${c.fileType || '-'}</p>
-            </div>
-            <div class="bg-gray-50 rounded-xl p-3">
-              <p class="text-xs text-gray-400 mb-0.5">Diunggah</p>
-              <p class="text-sm font-semibold text-black">${new Date(c.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
-            </div>
+            <div class="bg-gray-50 rounded-xl p-3"><p class="text-xs text-gray-400 mb-0.5">Tipe File</p><p class="text-sm font-semibold text-black uppercase">${updated.fileType || '-'}</p></div>
+            <div class="bg-gray-50 rounded-xl p-3"><p class="text-xs text-gray-400 mb-0.5">Diunggah</p><p class="text-sm font-semibold text-black">${new Date(updated.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</p></div>
             ${fileMetaExtra}
           </div>
           ${webUrlBlock}
           ${fileActionsBlock}
           <div class="bg-gray-50 rounded-2xl p-4 mb-6">
             <h3 class="text-sm font-semibold text-black mb-3">Beri Penilaian</h3>
-            <div id="star-input-${c.id}" data-score="0" class="flex gap-1 mb-3">
-              ${stars(0, true, c.id)}
-            </div>
-            <input id="comment-author-${c.id}" type="text" placeholder="Nama kamu" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none mb-2 bg-white">
-            <textarea id="comment-text-${c.id}" placeholder="Tulis komentar..." rows="3" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none resize-none bg-white mb-3"></textarea>
-            <button onclick="submitComment('${c.id}')" class="w-full bg-black text-white text-sm py-2.5 rounded-xl font-semibold hover:bg-gray-800 transition">
-              Kirim Komentar
-            </button>
+            <div id="star-input-${updated.id}" data-score="0" class="flex gap-1 mb-3">${stars(0, true, updated.id)}</div>
+            <input id="comment-author-${updated.id}" type="text" placeholder="Nama kamu" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none mb-2 bg-white">
+            <textarea id="comment-text-${updated.id}" placeholder="Tulis komentar..." rows="3" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none resize-none bg-white mb-3"></textarea>
+            <button onclick="submitComment('${updated.id}')" class="w-full bg-black text-white text-sm py-2.5 rounded-xl font-semibold hover:bg-gray-800 transition">Kirim Komentar</button>
           </div>
-          <div>
-            <h3 class="text-sm font-semibold text-black mb-1">Komentar <span class="text-gray-400 font-normal">(${comments.length})</span></h3>
-            <div id="comments-list-${c.id}">
-              ${commentsHtml}
-            </div>
-          </div>
+          <div><h3 class="text-sm font-semibold text-black mb-1">Komentar <span class="text-gray-400 font-normal">(${comments.length})</span></h3><div id="comments-list-${updated.id}">${commentsHtml}</div></div>
         </div>
       </div>
-    </div>`;
- 
-  document.body.insertAdjacentHTML('beforeend', html);
+    </div>`
+  document.body.insertAdjacentHTML('beforeend', html)
 }
- 
+
 function togglePdfViewer(contentId) {
-  const viewer = document.getElementById(`pdf-viewer-${contentId}`);
-  if (!viewer) return;
-  viewer.classList.toggle('hidden');
-  if (!viewer.classList.contains('hidden')) {
-    viewer.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
+  const viewer = document.getElementById(`pdf-viewer-${contentId}`)
+  if (viewer) viewer.classList.toggle('hidden')
 }
- 
+
 function downloadContent(contentId) {
-  const c = DB.getArr('contents').find(c => c.id === contentId);
-  if (!c || !c.fileData) { toast('⚠️ Tidak ada file untuk diunduh'); return; }
-  const a = document.createElement('a');
-  a.href = c.fileData;
-  a.download = c.fileName || c.title;
-  a.click();
-  toast('⬇️ Mengunduh file...');
+  const c = contentsCache.find(c => c.id === contentId)
+  if (!c || !c.fileData) { toast('⚠️ Tidak ada file untuk diunduh'); return }
+  const a = document.createElement('a')
+  a.href = c.fileData
+  a.download = c.fileName || c.title
+  a.click()
+  toast('⬇️ Mengunduh file...')
 }
- 
+
 function closeContentDetail() {
-  const modal = document.getElementById('content-detail-modal');
-  if (modal) modal.remove();
+  const modal = document.getElementById('content-detail-modal')
+  if (modal) modal.remove()
 }
- 
+
 function hoverStar(el, score) {
-  const container = el.parentElement;
-  [...container.querySelectorAll('i')].forEach((s, i) => {
-    s.className = `${i < score ? 'fas' : 'far'} fa-star text-yellow-400 cursor-pointer text-lg`;
-  });
+  const container = el.parentElement
+  if (!container) return
+  ;[...container.querySelectorAll('i')].forEach((s, i) => {
+    s.className = `${i < score ? 'fas' : 'far'} fa-star text-yellow-400 cursor-pointer text-lg`
+  })
 }
- 
+
 function resetStars(contentId) {
-  const container = document.getElementById(`star-input-${contentId}`);
-  if (!container) return;
-  const score = parseInt(container.dataset.score) || 0;
-  [...container.querySelectorAll('i')].forEach((s, i) => {
-    s.className = `${i < score ? 'fas' : 'far'} fa-star text-yellow-400 cursor-pointer text-lg`;
-  });
+  const container = document.getElementById(`star-input-${contentId}`)
+  if (!container) return
+  const score = parseInt(container.dataset.score) || 0
+  ;[...container.querySelectorAll('i')].forEach((s, i) => {
+    s.className = `${i < score ? 'fas' : 'far'} fa-star text-yellow-400 cursor-pointer text-lg`
+  })
 }
- 
+
 function setStar(contentId, score) {
-  const container = document.getElementById(`star-input-${contentId}`);
-  if (!container) return;
-  container.dataset.score = score;
-  [...container.querySelectorAll('i')].forEach((s, i) => {
-    s.className = `${i < score ? 'fas' : 'far'} fa-star text-yellow-400 cursor-pointer text-lg`;
-  });
+  const container = document.getElementById(`star-input-${contentId}`)
+  if (!container) return
+  container.dataset.score = score
+  ;[...container.querySelectorAll('i')].forEach((s, i) => {
+    s.className = `${i < score ? 'fas' : 'far'} fa-star text-yellow-400 cursor-pointer text-lg`
+  })
 }
- 
-function submitComment(contentId) {
-  const author = document.getElementById(`comment-author-${contentId}`).value.trim();
-  const text = document.getElementById(`comment-text-${contentId}`).value.trim();
-  const score = parseInt(document.getElementById(`star-input-${contentId}`)?.dataset.score) || 0;
- 
-  if (!author) { toast('⚠️ Masukkan nama kamu'); return; }
-  if (!text) { toast('⚠️ Tulis komentar dulu'); return; }
-  if (!score) { toast('⚠️ Beri bintang dulu'); return; }
- 
-  const contents = DB.getArr('contents');
-  const idx = contents.findIndex(c => c.id === contentId);
-  if (idx < 0) return;
- 
-  if (!contents[idx].comments) contents[idx].comments = [];
-  if (!contents[idx].ratings) contents[idx].ratings = [];
- 
-  contents[idx].comments.unshift({ author, text, rating: score, date: new Date().toISOString() });
-  contents[idx].ratings.push({ score });
-  DB.set('contents', contents);
- 
-  closeContentDetail();
-  showContentDetail(contentId);
-  toast('✅ Komentar berhasil dikirim!');
+
+async function submitComment(contentId) {
+  const author = document.getElementById(`comment-author-${contentId}`).value.trim()
+  const text = document.getElementById(`comment-text-${contentId}`).value.trim()
+  const score = parseInt(document.getElementById(`star-input-${contentId}`)?.dataset.score) || 0
+  if (!author || !text || !score) { toast('⚠️ Lengkapi data komentar'); return }
+  await window._SB.addComment(contentId, { author, text, rating: score })
+  await loadContents()
+  closeContentDetail()
+  showContentDetail(contentId)
+  toast('✅ Komentar berhasil dikirim!')
 }
- 
+
 // ============================
 // SEARCH
 // ============================
 function handleSearch(q) {
-  if (!q.trim()) return;
-  const contents = DB.getArr('contents').filter(c => c.title.toLowerCase().includes(q.toLowerCase()));
-  const links = DB.getArr('linkwebs').filter(l => l.title.toLowerCase().includes(q.toLowerCase()));
-  toast(`${contents.length + links.length} hasil ditemukan`);
+  if (!q.trim()) return
+  const resultContents = contentsCache.filter(c => c.title.toLowerCase().includes(q.toLowerCase()))
+  const resultLinks = linkwebsCache.filter(l => l.title.toLowerCase().includes(q.toLowerCase()))
+  toast(`${resultContents.length + resultLinks.length} hasil ditemukan`)
 }
- 
+
 // ============================
-// UPLOAD KONTEN
+// UPLOAD KONTEN & LINK
 // ============================
 function setUploadTab(tab) {
-  document.getElementById('tab-konten').classList.toggle('active', tab === 'konten');
-  document.getElementById('tab-linkweb').classList.toggle('active', tab === 'linkweb');
-  document.getElementById('upload-konten-panel').classList.toggle('hidden', tab !== 'konten');
-  document.getElementById('upload-linkweb-panel').classList.toggle('hidden', tab !== 'linkweb');
+  document.getElementById('tab-konten').classList.toggle('active', tab === 'konten')
+  document.getElementById('tab-linkweb').classList.toggle('active', tab === 'linkweb')
+  document.getElementById('upload-konten-panel').classList.toggle('hidden', tab !== 'konten')
+  document.getElementById('upload-linkweb-panel').classList.toggle('hidden', tab !== 'linkweb')
 }
- 
+
 function handleMiniFile(input) {
-  if (!input.files[0]) return;
-  tempFiles.main = input.files[0];
-  const el = document.getElementById('mini-file-preview');
-  el.classList.remove('hidden');
-  document.getElementById('mini-file-name').textContent = input.files[0].name;
-  document.getElementById('mini-file-size').textContent = formatSize(input.files[0].size);
+  if (!input.files[0]) return
+  tempFiles.main = input.files[0]
+  const el = document.getElementById('mini-file-preview')
+  el.classList.remove('hidden')
+  document.getElementById('mini-file-name').textContent = input.files[0].name
+  document.getElementById('mini-file-size').textContent = formatSize(input.files[0].size)
 }
- 
+
 function handleMiniDrop(e) {
-  e.preventDefault();
-  e.currentTarget.classList.remove('hover');
-  const f = e.dataTransfer.files[0];
-  if (f) { tempFiles.main = f; document.getElementById('mini-file').files = e.dataTransfer.files; handleMiniFile({files:[f]}); }
+  e.preventDefault()
+  e.currentTarget.classList.remove('hover')
+  const f = e.dataTransfer.files[0]
+  if (f) { tempFiles.main = f; document.getElementById('mini-file').files = e.dataTransfer.files; handleMiniFile({files:[f]}) }
 }
- 
+
 function clearMiniFile() {
-  tempFiles.main = null;
-  document.getElementById('mini-file-preview').classList.add('hidden');
-  document.getElementById('mini-file').value = '';
+  tempFiles.main = null
+  document.getElementById('mini-file-preview').classList.add('hidden')
+  document.getElementById('mini-file').value = ''
 }
- 
+
 function handleMainFile(input) {
-  if (!input.files[0]) return;
-  tempFiles.main = input.files[0];
-  document.getElementById('main-file-info').classList.remove('hidden');
-  document.getElementById('main-file-name').textContent = input.files[0].name;
-  document.getElementById('main-file-size').textContent = formatSize(input.files[0].size);
-  const ext = input.files[0].name.split('.').pop().toLowerCase();
-  const icons = {png:'fas fa-file-image text-orange-400',jpg:'fas fa-file-image text-orange-400',jpeg:'fas fa-file-image text-orange-400',gif:'fas fa-file-image text-orange-400',webp:'fas fa-file-image text-orange-400',mp4:'fas fa-file-video text-purple-400',pdf:'fas fa-file-pdf text-red-400',doc:'fas fa-file-word text-blue-400',docx:'fas fa-file-word text-blue-400'};
-  document.getElementById('main-file-icon').className = icons[ext] || 'fas fa-file text-gray-400';
-  document.getElementById('main-file-icon').className += ' text-xl';
+  if (!input.files[0]) return
+  tempFiles.main = input.files[0]
+  document.getElementById('main-file-info').classList.remove('hidden')
+  document.getElementById('main-file-name').textContent = input.files[0].name
+  document.getElementById('main-file-size').textContent = formatSize(input.files[0].size)
+  const ext = input.files[0].name.split('.').pop().toLowerCase()
+  const icons = {png:'fas fa-file-image text-orange-400',jpg:'fas fa-file-image text-orange-400',jpeg:'fas fa-file-image text-orange-400',gif:'fas fa-file-image text-orange-400',webp:'fas fa-file-image text-orange-400',mp4:'fas fa-file-video text-purple-400',pdf:'fas fa-file-pdf text-red-400',doc:'fas fa-file-word text-blue-400',docx:'fas fa-file-word text-blue-400'}
+  document.getElementById('main-file-icon').className = icons[ext] || 'fas fa-file text-gray-400'
+  document.getElementById('main-file-icon').className += ' text-xl'
 }
- 
+
 function handleMainDrop(e) {
-  e.preventDefault();
-  e.currentTarget.classList.remove('hover');
-  const f = e.dataTransfer.files[0];
-  if (f) { tempFiles.main = f; handleMainFile({files:[f]}); }
+  e.preventDefault()
+  e.currentTarget.classList.remove('hover')
+  const f = e.dataTransfer.files[0]
+  if (f) { tempFiles.main = f; handleMainFile({files:[f]}) }
 }
- 
+
 function clearMainFile() {
-  tempFiles.main = null;
-  document.getElementById('main-file-info').classList.add('hidden');
+  tempFiles.main = null
+  document.getElementById('main-file-info').classList.add('hidden')
 }
- 
+
 function handleThumbFile(input) {
-  if (!input.files[0]) return;
-  tempFiles.thumbFile = input.files[0];
-  const reader = new FileReader();
+  if (!input.files[0]) return
+  tempFiles.thumbFile = input.files[0]
+  const reader = new FileReader()
   reader.onload = e => {
-    tempFiles.thumb = e.target.result;
-    document.getElementById('thumb-preview').src = e.target.result;
-    document.getElementById('thumb-preview').classList.remove('hidden');
-    document.getElementById('thumb-icon-placeholder').classList.add('hidden');
-  };
-  reader.readAsDataURL(input.files[0]);
+    tempFiles.thumb = e.target.result
+    document.getElementById('thumb-preview').src = e.target.result
+    document.getElementById('thumb-preview').classList.remove('hidden')
+    document.getElementById('thumb-icon-placeholder').classList.add('hidden')
+  }
+  reader.readAsDataURL(input.files[0])
 }
- 
+
 function handleLinkIcon(input) {
-  if (!input.files[0]) return;
-  tempFiles.linkIcon = input.files[0];
-  const reader = new FileReader();
+  if (!input.files[0]) return
+  tempFiles.linkIcon = input.files[0]
+  const reader = new FileReader()
   reader.onload = e => {
-    document.getElementById('lk-icon-preview').src = e.target.result;
-    document.getElementById('lk-icon-preview').classList.remove('hidden');
-    document.getElementById('lk-icon-placeholder').classList.add('hidden');
-  };
-  reader.readAsDataURL(input.files[0]);
+    document.getElementById('lk-icon-preview').src = e.target.result
+    document.getElementById('lk-icon-preview').classList.remove('hidden')
+    document.getElementById('lk-icon-placeholder').classList.add('hidden')
+  }
+  reader.readAsDataURL(input.files[0])
 }
- 
+
 async function submitUpload() {
-  const title = document.getElementById('up-title').value.trim();
-  const catId = document.getElementById('up-category').value;
-  const desc = document.getElementById('up-desc').value.trim();
-  if (!title) { toast('⚠️ Judul wajib diisi!'); return; }
- 
-  let fileUrl = null, thumbUrl = null, fileType = 'doc';
- 
+  const title = document.getElementById('up-title').value.trim()
+  const catId = document.getElementById('up-category').value
+  const desc = document.getElementById('up-desc').value.trim()
+  if (!title) { toast('⚠️ Judul wajib diisi!'); return }
+
+  let fileUrl = null, thumbUrl = null, fileType = 'doc'
   if (tempFiles.main) {
-    const ext = tempFiles.main.name.split('.').pop().toLowerCase();
-    const typeMap = {png:'image',jpg:'image',jpeg:'image',gif:'image',webp:'image',mp4:'video',pdf:'pdf',doc:'doc',docx:'docx'};
-    fileType = typeMap[ext] || 'doc';
-    toast('⏳ Mengupload file...');
-    fileUrl = await window._SB.uploadContentFile(CURRENT_USER.id, tempFiles.main);
+    const ext = tempFiles.main.name.split('.').pop().toLowerCase()
+    const typeMap = {png:'image',jpg:'image',jpeg:'image',gif:'image',webp:'image',mp4:'video',pdf:'pdf',doc:'doc',docx:'docx'}
+    fileType = typeMap[ext] || 'doc'
+    toast('⏳ Mengupload file...')
+    fileUrl = await window._SB.uploadContentFile(CURRENT_USER.id, tempFiles.main)
   }
- 
   if (tempFiles.thumbFile) {
-    toast('⏳ Mengupload thumbnail...');
-    thumbUrl = await window._SB.uploadThumbnail(CURRENT_USER.id, tempFiles.thumbFile);
+    toast('⏳ Mengupload thumbnail...')
+    thumbUrl = await window._SB.uploadThumbnail(CURRENT_USER.id, tempFiles.thumbFile)
   }
- 
-  const content = await window._SB.addContent(CURRENT_USER.id, {
+
+  await window._SB.addContent(CURRENT_USER.id, {
     name: title,
     description: desc,
     category_id: catId || null,
@@ -1489,112 +1399,88 @@ async function submitUpload() {
     preview_image: thumbUrl || null,
     display_url: document.getElementById('up-url').value.trim() || null,
     status: 'published'
-  });
- 
-  DB.pushArr('contents', {
-    id: content.id, userId: CURRENT_PROFILE.id, categoryId: catId,
-    title, description: desc, fileType,
-    authorName: CURRENT_PROFILE?.username || '',
-    authorAvatar: CURRENT_PROFILE?.avatar_url || '',
-    fileData: fileUrl, thumbUrl: thumbUrl || '',
-    views: 0, likes: 0, bookmarked: false,
-    createdAt: content.created_at
-  });
- 
-  toast('✅ Konten berhasil diupload!');
-  closeModal('modal-upload');
-  resetUploadForm();
-  renderPage(getCurrentPage());
+  })
+
+  await loadContents()
+  await loadSaves()
+  toast('✅ Konten berhasil diupload!')
+  closeModal('modal-upload')
+  resetUploadForm()
+  renderPage(getCurrentPage())
 }
- 
+
 async function submitLink() {
-  const title = document.getElementById('lk-title').value.trim();
-  const url = document.getElementById('lk-url').value.trim();
-  if (!title || !url) { toast('⚠️ Judul dan URL wajib diisi!'); return; }
- 
-  let iconUrl = '';
+  const title = document.getElementById('lk-title').value.trim()
+  const url = document.getElementById('lk-url').value.trim()
+  if (!title || !url) { toast('⚠️ Judul dan URL wajib diisi!'); return }
+  let iconUrl = ''
   if (tempFiles.linkIcon) {
-    toast('⏳ Mengupload icon...');
-    const ext = tempFiles.linkIcon.name.split('.').pop();
-    const path = `links/${CURRENT_USER.id}/${Date.now()}.${ext}`;
-    const { error } = await window._SB.supabase.storage.from('avatars').upload(path, tempFiles.linkIcon);
+    toast('⏳ Mengupload icon...')
+    const ext = tempFiles.linkIcon.name.split('.').pop()
+    const path = `links/${CURRENT_USER.id}/${Date.now()}.${ext}`
+    const { error } = await window._SB.supabase.storage.from('avatars').upload(path, tempFiles.linkIcon)
     if (!error) {
-      const { data: { publicUrl } } = window._SB.supabase.storage.from('avatars').getPublicUrl(path);
-      iconUrl = publicUrl;
+      const { data: { publicUrl } } = window._SB.supabase.storage.from('avatars').getPublicUrl(path)
+      iconUrl = publicUrl
     }
   }
- 
-  const ref = await window._SB.addRef(CURRENT_USER.id, { 
-    theme: title, 
+  await window._SB.addRef(CURRENT_USER.id, {
+    theme: title,
     language: url,
-    icon_url: iconUrl
-  });
- 
-  DB.pushArr('linkwebs', {
-    id: ref.id, userId: CURRENT_USER.id,
-    categoryId: document.getElementById('lk-category').value || null,
-    title, url,
+    icon_url: iconUrl,
     description: document.getElementById('lk-desc').value.trim(),
-    iconUrl: iconUrl,
     status: document.getElementById('lk-status').value,
-    bookmarked: false,
-    createdAt: ref.created_at
-  });
- 
-  toast('✅ Link web berhasil disimpan!');
-  closeModal('modal-link');
-  resetLinkForm();
-  renderPage(getCurrentPage());
+    category_id: document.getElementById('lk-category').value || null
+  })
+  await loadLinkwebs()
+  toast('✅ Link web berhasil disimpan!')
+  closeModal('modal-link')
+  resetLinkForm()
+  renderPage(getCurrentPage())
 }
- 
+
 async function submitPost() {
-  const content = document.getElementById('post-content').value.trim();
-  if (!content) { toast('⚠️ Tulis sesuatu dulu!'); return; }
- 
-  const post = await window._SB.addPost(CURRENT_USER.id, content);
- 
-  DB.pushArr('discussions', {
-    id: post.id, userId: CURRENT_USER.id,
-    userName: CURRENT_PROFILE?.username || 'Pengguna',
-    content, likes: 0, comments: 0, shares: 0,
-    createdAt: post.created_at
-  });
- 
-  document.getElementById('post-content').value = '';
-  toast('✅ Post berhasil dipublikasikan!');
-  closeModal('modal-post');
-  renderDiskusi();
+  const content = document.getElementById('post-content').value.trim()
+  if (!content) { toast('⚠️ Tulis sesuatu dulu!'); return }
+  await window._SB.addPost(CURRENT_USER.id, content)
+  await loadPosts()
+  document.getElementById('post-content').value = ''
+  toast('✅ Post berhasil dipublikasikan!')
+  closeModal('modal-post')
+  renderDiskusi()
 }
- 
-function submitProject() {
-  const name = document.getElementById('proj-name').value.trim();
-  if (!name) { toast('⚠️ Nama project wajib diisi!'); return; }
+
+async function submitProject() {
+  const name = document.getElementById('proj-name').value.trim()
+  if (!name) { toast('⚠️ Nama project wajib diisi!'); return }
   const newProj = {
-    id: DB.uuid(), userId: CURRENT_USER?.id || 'u1', name,
+    user_id: CURRENT_USER.id,
+    name,
     description: document.getElementById('proj-desc').value.trim(),
-    deployUrl: document.getElementById('proj-url').value.trim(),
-    techStack: document.getElementById('proj-tech').value.trim(),
+    deploy_url: document.getElementById('proj-url').value.trim(),
+    tech_stack: document.getElementById('proj-tech').value.trim(),
     status: document.getElementById('proj-status').value,
-    visitCount: 0,
-    performanceScore: parseInt(document.getElementById('proj-perf').value) || 80,
-    uptimePercent: parseInt(document.getElementById('proj-uptime').value) || 99,
-    lastDeployed: new Date().toISOString(),
-    createdAt: new Date().toISOString(),
-  };
-  DB.pushArr('projects', newProj);
-  ['proj-name', 'proj-desc', 'proj-url', 'proj-tech', 'proj-perf', 'proj-uptime'].forEach(id => document.getElementById(id).value = '');
-  toast('✅ Project berhasil ditambahkan!');
-  closeModal('modal-project');
-  renderAnalyst();
+    visit_count: 0,
+    performance_score: parseInt(document.getElementById('proj-perf').value) || 80,
+    uptime_percent: parseInt(document.getElementById('proj-uptime').value) || 99,
+    last_deployed: new Date().toISOString()
+  }
+  await window._SB.addProject(CURRENT_USER.id, newProj)
+  await loadProjects()
+  ;['proj-name', 'proj-desc', 'proj-url', 'proj-tech', 'proj-perf', 'proj-uptime'].forEach(id => document.getElementById(id).value = '')
+  toast('✅ Project berhasil ditambahkan!')
+  closeModal('modal-project')
+  renderAnalyst()
 }
- 
-function deleteProject(id) {
-  const projects = DB.getArr('projects').filter(p => p.id !== id);
-  DB.set('projects', projects);
-  toast('🗑️ Project dihapus');
-  renderAnalyst();
+
+async function deleteProject(id) {
+  if (!confirm('Hapus project ini?')) return
+  await window._SB.deleteProject(id)
+  await loadProjects()
+  renderAnalyst()
+  toast('🗑️ Project dihapus')
 }
- 
+
 async function saveEditProfil() {
   const updates = {
     username: document.getElementById('ep-username').value.trim() || CURRENT_PROFILE.username,
@@ -1603,144 +1489,133 @@ async function saveEditProfil() {
     occupation: document.getElementById('ep-occupation').value.trim(),
     tech_stack: document.getElementById('ep-techstack').value.trim(),
     interests: document.getElementById('ep-interests').value.trim(),
-  };
-  CURRENT_PROFILE = await window._SB.updateProfile(CURRENT_USER.id, updates);
-  DB.set('user_profile', {
-    name: CURRENT_PROFILE.username,
-    username: CURRENT_PROFILE.username,
-    bio: CURRENT_PROFILE.bio || '',
-    location: CURRENT_PROFILE.location || '',
-    occupation: CURRENT_PROFILE.occupation || '',
-    techStack: CURRENT_PROFILE.tech_stack || '',
-    interests: CURRENT_PROFILE.interests || '',
-    avatarUrl: CURRENT_PROFILE.avatar_url || '',
-    coverUrl: CURRENT_PROFILE.cover_url || '',
-    followers: 0, following: 0,
-  });
-  toast('✅ Profil berhasil diperbarui!');
-  closeModal('modal-editprofil');
-  renderProfil();
+  }
+  CURRENT_PROFILE = await window._SB.updateProfile(CURRENT_USER.id, updates)
+  toast('✅ Profil berhasil diperbarui!')
+  closeModal('modal-editprofil')
+  renderProfil()
 }
- 
+
 async function uploadAvatar(input) {
-  if (!input.files[0]) return;
-  toast('⏳ Mengupload foto...');
-  const url = await window._SB.uploadAvatarFile(CURRENT_USER.id, input.files[0]);
-  await window._SB.updateProfile(CURRENT_USER.id, { avatar_url: url });
-  CURRENT_PROFILE.avatar_url = url;
-  const profile = DB.get('user_profile') || {};
-  profile.avatarUrl = url;
-  DB.set('user_profile', profile);
-  toast('✅ Foto profil diperbarui!');
-  renderProfil();
+  if (!input.files[0]) return
+  toast('⏳ Mengupload foto...')
+  const url = await window._SB.uploadAvatarFile(CURRENT_USER.id, input.files[0])
+  await window._SB.updateProfile(CURRENT_USER.id, { avatar_url: url })
+  CURRENT_PROFILE.avatar_url = url
+  renderProfil()
+  toast('✅ Foto profil diperbarui!')
 }
- 
+
 async function uploadCover(input) {
-  if (!input.files[0]) return;
-  toast('⏳ Mengupload cover...');
-  const url = await window._SB.uploadCoverFile(CURRENT_USER.id, input.files[0]);
-  await window._SB.updateProfile(CURRENT_USER.id, { cover_url: url });
-  CURRENT_PROFILE.cover_url = url;
-  const profile = DB.get('user_profile') || {};
-  profile.coverUrl = url;
-  DB.set('user_profile', profile);
-  toast('✅ Cover diperbarui!');
-  renderProfil();
+  if (!input.files[0]) return
+  toast('⏳ Mengupload cover...')
+  const url = await window._SB.uploadCoverFile(CURRENT_USER.id, input.files[0])
+  await window._SB.updateProfile(CURRENT_USER.id, { cover_url: url })
+  CURRENT_PROFILE.cover_url = url
+  renderProfil()
+  toast('✅ Cover diperbarui!')
 }
- 
+
 function clearAllData() {
-  if (!confirm('Yakin hapus semua data? Ini tidak bisa dibatalkan.')) return;
-  Object.keys(localStorage).filter(k => k.startsWith('nissanex_')).forEach(k => localStorage.removeItem(k));
-  toast('🗑️ Semua data dihapus. Refresh halaman...');
-  setTimeout(() => location.reload(), 1500);
+  if (!confirm('Yakin hapus semua data? Ini tidak bisa dibatalkan.')) return
+  // Hanya bersihkan localStorage untuk keperluan lain (jika ada), tapi data utama di Supabase tidak dihapus
+  // Karena tidak pakai localStorage untuk data utama, fungsi ini bisa dihapus atau diberi peringatan
+  toast('🗑️ Fitur ini tidak tersedia karena data tersimpan di cloud.')
 }
- 
+
 // ============================
 // MODAL HELPERS
 // ============================
 function openUploadModal() {
   if (!CURRENT_USER) { openAuthModal(); toast('⚠️ Login dulu untuk upload konten'); return }
-  populateCategorySelects();
-  tempFiles = { main: null, thumb: null, thumbFile: null, linkIcon: null };
-  openModal('modal-upload');
+  populateCategorySelects()
+  tempFiles = { main: null, thumb: null, thumbFile: null, linkIcon: null }
+  openModal('modal-upload')
 }
- 
+
 function openLinkModal() {
   if (!CURRENT_USER) { openAuthModal(); toast('⚠️ Login dulu untuk menambah link'); return }
-  populateCategorySelects();
-  tempFiles = { main: null, thumb: null, thumbFile: null, linkIcon: null };
-  document.getElementById('lk-icon-preview').classList.add('hidden');
-  document.getElementById('lk-icon-placeholder').classList.remove('hidden');
-  openModal('modal-link');
+  populateCategorySelects()
+  tempFiles = { main: null, thumb: null, thumbFile: null, linkIcon: null }
+  document.getElementById('lk-icon-preview').classList.add('hidden')
+  document.getElementById('lk-icon-placeholder').classList.remove('hidden')
+  openModal('modal-link')
 }
- 
+
 function openPostModal() {
   if (!CURRENT_USER) { openAuthModal(); toast('⚠️ Login dulu untuk posting diskusi'); return }
   openModal('modal-post')
-  // Inject avatar user yang login ke modal
   const el = document.getElementById('modal-post-avatar')
   if (el && CURRENT_PROFILE) {
     el.outerHTML = avatarEl(CURRENT_PROFILE.username, CURRENT_PROFILE.avatar_url)
       .replace('class="', 'id="modal-post-avatar" class="')
   }
 }
-function openProjectModal() { openModal('modal-project'); }
- 
+
+function openProjectModal() { openModal('modal-project') }
 function openEditProfil() {
-  const profile = DB.get('user_profile') || {};
-  document.getElementById('ep-name').value = profile.name || '';
-  document.getElementById('ep-username').value = profile.username || '';
-  document.getElementById('ep-bio').value = profile.bio || '';
-  document.getElementById('ep-location').value = profile.location || '';
-  document.getElementById('ep-occupation').value = profile.occupation || '';
-  document.getElementById('ep-techstack').value = profile.techStack || '';
-  document.getElementById('ep-interests').value = profile.interests || '';
-  openModal('modal-editprofil');
+  const profile = {
+    name: CURRENT_PROFILE?.username || '',
+    username: CURRENT_PROFILE?.username || '',
+    bio: CURRENT_PROFILE?.bio || '',
+    location: CURRENT_PROFILE?.location || '',
+    occupation: CURRENT_PROFILE?.occupation || '',
+    techStack: CURRENT_PROFILE?.tech_stack || '',
+    interests: CURRENT_PROFILE?.interests || ''
+  }
+  document.getElementById('ep-name').value = profile.name
+  document.getElementById('ep-username').value = profile.username
+  document.getElementById('ep-bio').value = profile.bio
+  document.getElementById('ep-location').value = profile.location
+  document.getElementById('ep-occupation').value = profile.occupation
+  document.getElementById('ep-techstack').value = profile.techStack
+  document.getElementById('ep-interests').value = profile.interests
+  openModal('modal-editprofil')
 }
- 
-function openModal(id) { document.getElementById(id).classList.add('open'); document.body.style.overflow = 'hidden'; }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); document.body.style.overflow = ''; }
-function closeModalBackdrop(e, id) { if (e.target.id === id) closeModal(id); }
- 
+
+function openModal(id) { document.getElementById(id).classList.add('open'); document.body.style.overflow = 'hidden' }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); document.body.style.overflow = '' }
+function closeModalBackdrop(e, id) { if (e.target.id === id) closeModal(id) }
+
 function populateCategorySelects() {
-  const cats = DB.getArr('categories');
-  const opts = cats.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-  ['up-category', 'lk-category'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.innerHTML = '<option value="">Pilih kategori...</option>' + opts;
-  });
+  const opts = categoriesCache.map(c => `<option value="${c.id}">${c.name}</option>`).join('')
+  ;['up-category', 'lk-category', 'edit-konten-category'].forEach(id => {
+    const el = document.getElementById(id)
+    if (el) el.innerHTML = '<option value="">Pilih kategori...</option>' + opts
+  })
 }
- 
+
 function resetUploadForm() {
-  ['up-title', 'up-desc', 'up-url'].forEach(id => document.getElementById(id).value = '');
-  clearMainFile();
-  tempFiles = { main: null, thumb: null, thumbFile: null, linkIcon: null };
-  document.getElementById('thumb-preview').classList.add('hidden');
-  document.getElementById('thumb-icon-placeholder').classList.remove('hidden');
+  ;['up-title', 'up-desc', 'up-url'].forEach(id => document.getElementById(id).value = '')
+  clearMainFile()
+  tempFiles = { main: null, thumb: null, thumbFile: null, linkIcon: null }
+  document.getElementById('thumb-preview').classList.add('hidden')
+  document.getElementById('thumb-icon-placeholder').classList.remove('hidden')
 }
- 
+
 function resetLinkForm() {
-  ['lk-title', 'lk-url', 'lk-desc'].forEach(id => document.getElementById(id).value = '');
-  tempFiles.linkIcon = null;
+  ;['lk-title', 'lk-url', 'lk-desc'].forEach(id => document.getElementById(id).value = '')
+  tempFiles.linkIcon = null
+  document.getElementById('lk-icon-preview').classList.add('hidden')
+  document.getElementById('lk-icon-placeholder').classList.remove('hidden')
 }
- 
+
 // ============================
 // UTILITIES
 // ============================
 function toast(msg, duration = 2800) {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), duration);
+  const el = document.getElementById('toast')
+  el.textContent = msg
+  el.classList.add('show')
+  setTimeout(() => el.classList.remove('show'), duration)
 }
- 
+
 function formatSize(bytes) {
-  if (bytes < 1024) return bytes + 'B';
-  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + 'KB';
-  return (bytes / 1048576).toFixed(1) + 'MB';
+  if (bytes < 1024) return bytes + 'B'
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + 'KB'
+  return (bytes / 1048576).toFixed(1) + 'MB'
 }
- 
-// Helper: render avatar HTML (foto atau inisial)
+
 function avatarEl(name, avatarUrl, size = 'w-10 h-10', rounded = 'rounded-xl') {
   const initial = (name || 'U')[0].toUpperCase()
   if (avatarUrl) {
@@ -1750,90 +1625,116 @@ function avatarEl(name, avatarUrl, size = 'w-10 h-10', rounded = 'rounded-xl') {
 }
 
 function timeAgo(dateStr) {
-  const diff = (Date.now() - new Date(dateStr).getTime()) / 1000;
-  if (diff < 60) return 'Baru saja';
-  if (diff < 3600) return Math.floor(diff / 60) + 'm yang lalu';
-  if (diff < 86400) return Math.floor(diff / 3600) + 'j yang lalu';
-  if (diff < 604800) return Math.floor(diff / 86400) + ' hari yang lalu';
-  return Math.floor(diff / 604800) + ' minggu yang lalu';
+  const diff = (Date.now() - new Date(dateStr).getTime()) / 1000
+  if (diff < 60) return 'Baru saja'
+  if (diff < 3600) return Math.floor(diff / 60) + 'm yang lalu'
+  if (diff < 86400) return Math.floor(diff / 3600) + 'j yang lalu'
+  if (diff < 604800) return Math.floor(diff / 86400) + ' hari yang lalu'
+  return Math.floor(diff / 604800) + ' minggu yang lalu'
 }
- 
+
 function getCurrentPage() {
-  const active = document.querySelector('.page-content.active');
-  if (!active) return 'beranda';
-  return active.id.replace('page-', '');
+  const active = document.querySelector('.page-content.active')
+  if (!active) return 'beranda'
+  return active.id.replace('page-', '')
 }
- 
-// ============================
+
 // CARD DESCRIPTION HANDLERS
-// ============================
-let activeCardDesc = null;
- 
+let activeCardDesc = null
 function showCardDesc(cardEl) {
-  const overlay = cardEl.querySelector('.content-desc-overlay');
-  if (!overlay) return;
-  
+  const overlay = cardEl.querySelector('.content-desc-overlay')
+  if (!overlay) return
   if (activeCardDesc && activeCardDesc !== cardEl) {
-    const prevOverlay = activeCardDesc.querySelector('.content-desc-overlay');
-    if (prevOverlay) {
-      activeCardDesc.classList.remove('active-desc');
+    const prevOverlay = activeCardDesc.querySelector('.content-desc-overlay')
+    if (prevOverlay) activeCardDesc.classList.remove('active-desc')
+  }
+  cardEl.classList.add('active-desc')
+  activeCardDesc = cardEl
+}
+function hideCardDesc(cardEl) {
+  cardEl.classList.remove('active-desc')
+  if (activeCardDesc === cardEl) activeCardDesc = null
+}
+function toggleCardDesc(cardEl) {
+  if (cardEl.classList.contains('active-desc')) hideCardDesc(cardEl)
+  else showCardDesc(cardEl)
+  return false
+}
+
+// ============================
+// SUPABASE METHOD ENSURER
+// ============================
+function ensureSBMethods() {
+  if (!window._SB) return
+  // Add missing methods if needed (stub using supabase client)
+  if (!window._SB.getRefs) {
+    window._SB.getRefs = async (userId) => {
+      const { data, error } = await window._SB.supabase.from('refs').select('*').eq('user_id', userId)
+      if (error) throw error
+      return data
     }
   }
-  
-  cardEl.classList.add('active-desc');
-  activeCardDesc = cardEl;
-}
- 
-function hideCardDesc(cardEl) {
-  cardEl.classList.remove('active-desc');
-  if (activeCardDesc === cardEl) activeCardDesc = null;
-}
- 
-function toggleCardDesc(cardEl) {
-  if (cardEl.classList.contains('active-desc')) {
-    hideCardDesc(cardEl);
-  } else {
-    showCardDesc(cardEl);
+  if (!window._SB.addRef) {
+    window._SB.addRef = async (userId, ref) => {
+      const { data, error } = await window._SB.supabase.from('refs').insert({ ...ref, user_id: userId }).select().single()
+      if (error) throw error
+      return data
+    }
   }
-  return false;
+  if (!window._SB.getProjects) {
+    window._SB.getProjects = async (userId) => {
+      const { data, error } = await window._SB.supabase.from('projects').select('*').eq('user_id', userId)
+      if (error) throw error
+      return data
+    }
+  }
+  if (!window._SB.addProject) {
+    window._SB.addProject = async (userId, project) => {
+      const { data, error } = await window._SB.supabase.from('projects').insert({ ...project, user_id: userId }).select().single()
+      if (error) throw error
+      return data
+    }
+  }
+  if (!window._SB.deleteProject) {
+    window._SB.deleteProject = async (id) => {
+      const { error } = await window._SB.supabase.from('projects').delete().eq('id', id)
+      if (error) throw error
+    }
+  }
+  if (!window._SB.likePost) {
+    window._SB.likePost = async (postId, userId) => {
+      // simple increment likes_count, no duplicate check for demo
+      const { error } = await window._SB.supabase.rpc('increment_post_likes', { post_id: postId })
+      if (error) console.warn(error)
+    }
+  }
+  if (!window._SB.addComment) {
+    window._SB.addComment = async (contentId, comment) => {
+      const { error } = await window._SB.supabase.from('content_comments').insert({
+        content_id: contentId,
+        author: comment.author,
+        text: comment.text,
+        rating: comment.rating,
+        date: new Date().toISOString()
+      })
+      if (error) throw error
+      // also update ratings array in contents table (optional)
+      await window._SB.supabase.rpc('add_content_rating', { content_id: contentId, rating: comment.rating })
+    }
+  }
+  if (!window._SB.incrementViews) {
+    window._SB.incrementViews = async (contentId) => {
+      const { error } = await window._SB.supabase.rpc('increment_views', { content_id: contentId })
+      if (error) console.warn(error)
+    }
+  }
 }
- 
+
 // ============================
 // INIT
 // ============================
 ;(function resetStaleCategories() {
-  const cats = DB.getArr('categories');
-  const isOldSeed = cats.length > 0 && cats.some(c =>
-    ['Tekno', 'Musik', 'Film', 'Olahraga', 'Kuliner'].includes(c.name)
-  );
-  if (isOldSeed) {
-    localStorage.removeItem('nissanex_categories');
-  }
+  // nothing to do with localStorage
 })();
- 
-// ============================
-// SUPABASE FALLBACK SAFETY
-// Pastikan updatePost & deletePost ada; kalau belum didefinisikan di supabase.js, buat stub
-// ============================
-function _ensureSBMethods() {
-  if (!window._SB) return;
-  if (!window._SB.updatePost) {
-    window._SB.updatePost = async (postId, data) => {
-      // Stub: update via supabase jika tersedia
-      if (window._SB.supabase) {
-        const { error } = await window._SB.supabase.from('posts').update(data).eq('id', postId);
-        if (error) throw error;
-      }
-    };
-  }
-  if (!window._SB.deletePost) {
-    window._SB.deletePost = async (postId) => {
-      if (window._SB.supabase) {
-        const { error } = await window._SB.supabase.from('posts').delete().eq('id', postId);
-        if (error) throw error;
-      }
-    };
-  }
-}
 
-init();
+init()
