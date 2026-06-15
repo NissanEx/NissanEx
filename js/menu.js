@@ -746,55 +746,146 @@ function renderAnalyst() {
 }
 
 function renderProfil() {
-  if (!CURRENT_USER) { openAuthModal(); return }
+  // Guard: jika belum login, jangan render dan beri pesan
+  if (!CURRENT_USER) {
+    console.log('renderProfil: User belum login');
+    
+    // Sembunyikan elemen yang membutuhkan auth atau tampilkan placeholder
+    const profilContainer = document.getElementById('page-profil');
+    if (profilContainer) {
+      // Tampilkan pesan di grid konten
+      const kontenGrid = document.getElementById('profil-konten-grid');
+      if (kontenGrid) {
+        kontenGrid.innerHTML = `
+          <div class="col-span-full text-center py-20">
+            <i class="fas fa-lock text-5xl text-gray-300 mb-4"></i>
+            <p class="text-gray-500 font-medium">Silakan login untuk melihat profil Anda</p>
+            <button onclick="openAuthModal()" class="mt-4 bg-black text-white px-6 py-2.5 rounded-xl font-bold hover:bg-zinc-800 transition">
+              Login Sekarang
+            </button>
+          </div>
+        `;
+      }
+      
+      // Sembunyikan panel diskusi
+      const diskusiPanel = document.getElementById('profil-panel-diskusi');
+      if (diskusiPanel) diskusiPanel.classList.add('hidden');
+      
+      // Sembunyikan tombol upload/edit
+      const actionButtons = document.querySelectorAll('.flex.gap-2.flex-wrap button');
+      actionButtons.forEach(btn => {
+        if (btn.textContent.includes('Upload') || btn.textContent.includes('Edit')) {
+          btn.style.display = 'none';
+        }
+      });
+    }
+    return;
+  }
+  
+  // Jika login, pastikan profile data tersedia
+  if (!CURRENT_PROFILE) {
+    console.log('renderProfil: Menunggu profile data...');
+    // Tunggu sebentar lalu coba lagi
+    setTimeout(() => {
+      if (CURRENT_PROFILE) renderProfil();
+      else toast('⚠️ Gagal memuat data profil');
+    }, 500);
+    return;
+  }
+  
+  // Data profile (gunakan CURRENT_PROFILE langsung)
   const profile = {
-    name: CURRENT_PROFILE?.username || 'San Pelong',
-    username: CURRENT_PROFILE?.username || 'sanpelong',
-    bio: CURRENT_PROFILE?.bio || '',
-    location: CURRENT_PROFILE?.location || '',
-    occupation: CURRENT_PROFILE?.occupation || '',
-    techStack: CURRENT_PROFILE?.tech_stack || '',
-    interests: CURRENT_PROFILE?.interests || '',
-    avatarUrl: CURRENT_PROFILE?.avatar_url || '',
-    coverUrl: CURRENT_PROFILE?.cover_url || '',
-    followers: 0,
-    following: 0
+    name: CURRENT_PROFILE.username || 'Pengguna',
+    username: CURRENT_PROFILE.username || 'pengguna',
+    bio: CURRENT_PROFILE.bio || '',
+    location: CURRENT_PROFILE.location || '',
+    occupation: CURRENT_PROFILE.occupation || '',
+    techStack: CURRENT_PROFILE.tech_stack || '',
+    interests: CURRENT_PROFILE.interests || '',
+    avatarUrl: CURRENT_PROFILE.avatar_url || '',
+    coverUrl: CURRENT_PROFILE.cover_url || '',
+    followers: CURRENT_PROFILE.followers_count || 0,
+    following: CURRENT_PROFILE.following_count || 0
+  };
+  
+  // Filter konten milik user
+  const myContents = contentsCache.filter(c => c.userId === CURRENT_USER.id);
+  const myDiscussions = postsCache.filter(d => d.userId === CURRENT_USER.id);
+  
+  // Update DOM dengan pengecekan element exist
+  const nameEl = document.getElementById('profil-name');
+  if (nameEl) nameEl.textContent = profile.name;
+  
+  const usernameEl = document.getElementById('profil-username');
+  if (usernameEl) usernameEl.textContent = '@' + profile.username;
+  
+  const bioEl = document.getElementById('profil-bio');
+  if (bioEl) bioEl.textContent = profile.bio || 'Tidak ada bio';
+  
+  const locationEl = document.getElementById('info-location');
+  if (locationEl) locationEl.textContent = profile.location || 'Tidak diisi';
+  
+  const occupationEl = document.getElementById('info-occupation');
+  if (occupationEl) occupationEl.textContent = profile.occupation || 'Tidak diisi';
+  
+  const techStackEl = document.getElementById('info-techstack');
+  if (techStackEl) techStackEl.textContent = profile.techStack || 'Tidak diisi';
+  
+  const interestsEl = document.getElementById('info-interests');
+  if (interestsEl) interestsEl.textContent = profile.interests || 'Tidak diisi';
+  
+  // Avatar handling
+  const avatarImg = document.getElementById('avatar-img');
+  const avatarInitial = document.getElementById('avatar-initial');
+  
+  if (profile.avatarUrl && avatarImg && avatarInitial) {
+    avatarImg.src = profile.avatarUrl;
+    avatarImg.classList.remove('hidden');
+    avatarInitial.classList.add('hidden');
+  } else if (avatarInitial) {
+    avatarInitial.textContent = (profile.name || 'U')[0].toUpperCase();
+    if (avatarImg) avatarImg.classList.add('hidden');
+    avatarInitial.classList.remove('hidden');
   }
-  const myContents = contentsCache.filter(c => c.userId === CURRENT_USER.id)
-  const myDiscussions = postsCache.filter(d => d.userId === CURRENT_USER.id)
-
-  document.getElementById('profil-name').textContent = profile.name
-  document.getElementById('profil-username').textContent = '@'+profile.username
-  document.getElementById('profil-bio').textContent = profile.bio
-  document.getElementById('info-location').textContent = profile.location
-  document.getElementById('info-occupation').textContent = profile.occupation
-  document.getElementById('info-techstack').textContent = profile.techStack
-  document.getElementById('info-interests').textContent = profile.interests
-
-  if (profile.avatarUrl) {
-    document.getElementById('avatar-img').src = profile.avatarUrl
-    document.getElementById('avatar-img').classList.remove('hidden')
-    document.getElementById('avatar-initial').classList.add('hidden')
-  } else {
-    document.getElementById('avatar-initial').textContent = (profile.name||'S')[0].toUpperCase()
-    document.getElementById('avatar-img').classList.add('hidden')
-    document.getElementById('avatar-initial').classList.remove('hidden')
+  
+  // Cover image
+  const coverImg = document.getElementById('cover-img');
+  if (coverImg && profile.coverUrl) {
+    coverImg.src = profile.coverUrl;
+    coverImg.classList.remove('hidden');
+  } else if (coverImg) {
+    coverImg.classList.add('hidden');
   }
-  if (profile.coverUrl) {
-    document.getElementById('cover-img').src = profile.coverUrl
-    document.getElementById('cover-img').classList.remove('hidden')
-  }
-
-  document.getElementById('stat-followers').textContent = profile.followers
-  document.getElementById('stat-following').textContent = profile.following
-  document.getElementById('stat-posts').textContent = myContents.length
-  document.getElementById('stat-likes-total').textContent = myContents.reduce((a,c)=>a+c.likes,0)
-  document.getElementById('stat-comments').textContent = myDiscussions.reduce((a,d)=>a+d.comments,0)
-  document.getElementById('stat-shares').textContent = myDiscussions.reduce((a,d)=>a+d.shares,0)
-
-  renderRecentUploads()
-  renderProfilKonten()
-  renderProfilDiskusi()
+  
+  // Update statistik
+  const followersEl = document.getElementById('stat-followers');
+  if (followersEl) followersEl.textContent = profile.followers;
+  
+  const followingEl = document.getElementById('stat-following');
+  if (followingEl) followingEl.textContent = profile.following;
+  
+  const postsEl = document.getElementById('stat-posts');
+  if (postsEl) postsEl.textContent = myContents.length;
+  
+  const likesEl = document.getElementById('stat-likes-total');
+  if (likesEl) likesEl.textContent = myContents.reduce((a,c) => a + (c.likes || 0), 0);
+  
+  const commentsEl = document.getElementById('stat-comments');
+  if (commentsEl) commentsEl.textContent = myDiscussions.reduce((a,d) => a + (d.comments || 0), 0);
+  
+  const sharesEl = document.getElementById('stat-shares');
+  if (sharesEl) sharesEl.textContent = myDiscussions.reduce((a,d) => a + (d.shares || 0), 0);
+  
+  // Tampilkan tombol aksi
+  const actionButtons = document.querySelectorAll('.flex.gap-2.flex-wrap button');
+  actionButtons.forEach(btn => {
+    btn.style.display = 'inline-flex';
+  });
+  
+  // Render komponen turunan
+  renderRecentUploads();
+  renderProfilKonten();
+  renderProfilDiskusi();
 }
 
 function renderProfilKonten() {
