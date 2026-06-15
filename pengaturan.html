@@ -780,5 +780,22 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 
+<!-- TAMBAHAN SCRIPT UNTUK REDIRECT KE AUTH.HTML JIKA BELUM LOGIN -->
+<script>
+(async function() {
+  let wait = 0;
+  while (!window._SB && wait < 50) {
+    await new Promise(r => setTimeout(r, 100));
+    wait++;
+  }
+  if (window._SB) {
+    const user = await window._SB.getCurrentUser();
+    if (!user) {
+      window.location.href = 'auth.html';
+    }
+  }
+})();
+</script>
+
 </body>
 </html>
